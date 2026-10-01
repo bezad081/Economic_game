@@ -1,22 +1,29 @@
-# MACROSTATE Native Web V5 — Living City Edition
+# MACROSTATE V7 — Phaser Edition
 
-React + TypeScript + Vite native browser version of MACROSTATE.
+V7 replaces the hand-written city renderer with Phaser 3.90 + WebGL while keeping the React + TypeScript + Vite economic UI and simulation engine.
 
-V5 combines the V4 beginner-friendly interface with a stronger living-city layer:
+## Main upgrades
+- Phaser/WebGL city renderer with independent game loop
+- Smoother lane traffic, signal logic, headway braking, buses/taxis/bikes
+- Pedestrians constrained to sidewalks and district loops
+- Procedural building, tree, street-light and vehicle textures
+- Non-blocking quarter review (opened from Review button)
+- Separate economic indicator chart cards
+- Cinematic Cabinet Briefing start screen
+- Role selection: Chief Economist, Central Bank Governor, Finance Minister, Development Minister
+- Starting scenarios: Balanced, Inflation Shock, Recession, Financial Crisis
+- Accessible / Standard / Expert difficulty presets
+- Responsive layout aimed at 1366x768 and larger displays
 
-- Four **City Lenses**: City, Prosperity, Jobs, and Risk. Districts become an economic heatmap instead of decorative scenery.
-- **Quarter Review** coach: after every quarter it surfaces the three largest macro changes and reminds beginners to interpret before making another move.
-- More visible economic feedback in the city: market foot traffic, bank queues under stress, hospital emergency activity, innovation pulses, power instability, construction/trade activity, civic stress and rare prosperity celebrations.
-- Waterfront / trade activity, richer atmosphere, animated cloud shadows and economic district status outlines.
-- V4 onboarding, Beginner/Advanced modes, trend deck, policy advisor, mission campaign, firms, households, elections and cabinet systems remain intact.
-
-## Deploy
-
-Use the existing Vite GitHub Pages workflow in `.github/workflows/deploy.yml`.
-
+## Run
 ```bash
 npm install
+npm run dev
+```
+
+## Build
+```bash
 npm run build
 ```
 
-Output is `dist/`.
+The included GitHub Pages workflow deploys `dist/` automatically.

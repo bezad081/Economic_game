@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import CityCanvas, { type CityView } from './components/CityCanvas';
+import PhaserCity, { type CityView } from './components/PhaserCity';
 import QuarterPulse from './components/QuarterPulse';
 import OnboardingModal from './components/OnboardingModal';
 import PolicyPanel from './components/PolicyPanel';
 import ReportModal from './components/ReportModal';
 import SystemsModal from './components/SystemsModal';
 import TrendPanel from './components/TrendPanel';
-import StartScreen from './components/StartScreen';
+import StartScreen, { type StartSetup } from './components/StartScreen';
 import { EconomyEngine } from './game/economy';
 import type { EconomySnapshot, GameMode, PolicySpec, Tab } from './game/types';
 
@@ -38,6 +38,7 @@ export default function App(){
   const [quarterBefore,setQuarterBefore]=useState<EconomySnapshot|null>(null);
   const [showPulse,setShowPulse]=useState(false);
   const [started,setStarted]=useState(()=>localStorage.getItem(START_KEY)==='yes');
+  const [role,setRole]=useState<StartSetup['role']>(()=>(localStorage.getItem('macrostate-role-v7') as StartSetup['role'])||'Chief Economist');
 
   const sync=()=>{const s=engineRef.current!.snapshot();setEcon(s);localStorage.setItem(KEY,JSON.stringify(s))};
   const quarter=()=>{
@@ -47,7 +48,7 @@ export default function App(){
     setQuarterBefore(before);
     setEcon(after);
     localStorage.setItem(KEY,JSON.stringify(after));
-    setShowPulse(after.turn>0);
+    setShowPulse(false);
     setToast(engineRef.current!.state.lastQuarterSummary);
   };
   useEffect(()=>{if(paused||!started)return;const ms=speed===1?9500:speed===2?5400:3000;const id=setInterval(quarter,ms);return()=>clearInterval(id)},[paused,speed,started]);
@@ -55,7 +56,23 @@ export default function App(){
   const recommendations=useMemo(()=>engineRef.current!.advisor(),[econ]);
   const enact=(p:PolicySpec)=>{const r=engineRef.current!.enact(p.id);sync();setToast(r.ok?`${p.label} enacted. Let the effects transmit before overreacting.`:r.reason)};
   const shock=(k:'oil'|'financial'|'sanctions'|'boom'|'food')=>{engineRef.current!.triggerShock(k);sync();setToast(`${k} scenario shock triggered.`)};
-  const newGame=(mode:GameMode)=>{engineRef.current=new EconomyEngine(mode);sync();setSelected(null);setShowPulse(false);setQuarterBefore(null);setPaused(false);setStarted(true);localStorage.setItem(START_KEY,'yes');setToast(mode==='mission'?'Guided Campaign started — follow the mission objective.':'New Sandbox started.');};
+  const newGame=(mode:GameMode,setup?:StartSetup)=>{
+    engineRef.current=new EconomyEngine(mode);
+    if(setup){
+      setRole(setup.role);localStorage.setItem('macrostate-role-v7',setup.role);
+      if(setup.role==='Central Bank Governor')setTab('Monetary');
+      else if(setup.role==='Finance Minister')setTab('Fiscal');
+      else if(setup.role==='Development Minister')setTab('Structural');
+      else setTab('Advisor');
+      const s=engineRef.current.state;
+      if(setup.scenario==='Inflation Shock'){s.inflation=.079;s.inflationExpected=.061;s.growth=.041;s.approval=.47;s.regime='Overheating';s.macroRisk=34;}
+      if(setup.scenario==='Recession'){s.growth=-.032;s.unemployment=.091;s.businessConfidence=.39;s.consumerConfidence=.43;s.approval=.41;s.regime='Recession';s.macroRisk=41;}
+      if(setup.scenario==='Financial Crisis'){s.bankHealth=.46;s.creditGrowth=-.052;s.fci=74;s.macroRisk=61;s.approval=.43;s.regime='Financial Stress';}
+      if(setup.difficulty==='Accessible'){s.policyCapacity=100;s.politicalCapital=85;setSimple(true);}
+      if(setup.difficulty==='Expert'){s.policyCapacity=78;s.politicalCapital=58;s.approval=Math.max(.15,s.approval-.04);s.macroRisk=Math.min(100,s.macroRisk+8);setSimple(false);}
+    }
+    sync();setSelected(null);setShowPulse(false);setQuarterBefore(null);setPaused(false);setStarted(true);localStorage.setItem(START_KEY,'yes');setToast(mode==='mission'?'Campaign started — follow the mandate and protect the whole economy.':'Sandbox started — every policy tool is available.');
+  };
   const guideStart=(mode:GameMode)=>{setGuide(false);newGame(mode);setSimple(true);localStorage.setItem(SIMPLE_KEY,'beginner');localStorage.setItem(GUIDE_KEY,'done');};
   const continueGame=()=>{setStarted(true);setPaused(false);localStorage.setItem(START_KEY,'yes');};
   const openGuide=()=>setGuide(true);
@@ -65,9 +82,9 @@ export default function App(){
 
   return <>
   {!started && <StartScreen hasSave={!!loadSaved()} econ={econ} onContinue={continueGame} onStart={newGame} onGuide={openGuide} />}
-  <div className={`app v4 v5 v6 ${focus?'focus':''} ${simple?'simple-mode':'advanced-mode'} ${trendCollapsed?'trend-collapsed':''}`}>
+  <div className={`app v4 v5 v6 v7 ${focus?'focus':''} ${simple?'simple-mode':'advanced-mode'} ${trendCollapsed?'trend-collapsed':''}`}>
     <header className="topbar">
-      <div className="brand"><div className="logo">M</div><div><strong>MACROSTATE</strong><small>CHIEF ECONOMIC STRATEGIST • V6</small></div></div>
+      <div className="brand"><div className="logo">M</div><div><strong>MACROSTATE</strong><small>{role.toUpperCase()} • V7 PHASER EDITION</small></div></div>
       <div className="period"><span>Q{econ.quarter} {econ.year}</span><b>{econ.regime}</b></div>
       <div className="priority-strip"><span>Priority</span><b>{topPriority}</b></div>
       <div className="top-controls">
@@ -75,6 +92,7 @@ export default function App(){
         <button className={`mode-toggle ${simple?'beginner':''}`} onClick={toggleSimple}>{simple?'Beginner':'Advanced'}</button>
         <button onClick={()=>setPaused(v=>!v)}>{paused?'▶ Resume':'Ⅱ Pause'}</button>
         <div className="speed">{[1,2,4].map(s=><button key={s} onClick={()=>setSpeed(s)} className={speed===s?'active':''}>×{s}</button>)}</div>
+        {quarterBefore&&<button onClick={()=>setShowPulse(v=>!v)}>Review</button>}
         <button className="next-quarter" onClick={quarter}>Next Quarter →</button>
         {!simple&&<><button onClick={()=>setReport(true)}>Brief</button><button onClick={()=>setSystems(true)}>Systems</button><button onClick={()=>setFocus(v=>!v)}>{focus?'Dashboard':'Focus'}</button></>}
       </div>
@@ -82,7 +100,7 @@ export default function App(){
 
     <main className="game-layout">
       <section className="city-wrap">
-        <CityCanvas econ={econ} focus={focus} view={cityView} onSelect={setSelected}/>
+        <PhaserCity econ={econ} focus={focus} view={cityView} onSelect={setSelected}/>
         <div className="city-overlay top-left"><span className="live-dot"/> NATIONAL CAPITAL<div>{selected?'District selected':'Click a district to inspect it'}</div></div>
         <div className="city-lenses"><span>City lens</span>{(['City','Prosperity','Jobs','Risk'] as CityView[]).map(v=><button key={v} className={cityView===v?'active':''} onClick={()=>setCityView(v)}>{v}</button>)}</div>
         {district&&<div className={`district-card ${district.tone}`}><header><span>{district.icon}</span><div><small>{selected}</small><b>{district.title}</b></div><button onClick={()=>setSelected(null)}>×</button></header><p>{district.description}</p><div><span>{district.metricLabel}</span><strong>{district.metric}</strong></div></div>}
