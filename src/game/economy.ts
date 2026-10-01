@@ -1,5 +1,5 @@
 import { POLICIES, policyById } from './policies';
-import type { ActiveImpulse, EconomySnapshot, Effects, GameMode, HistoryPoint, Mission, NewsItem, PolicySpec } from './types';
+import type { ActiveImpulse, AdvisorRecommendation, EconomySnapshot, Effects, GameMode, HistoryPoint, Mission, NewsItem, PolicySpec } from './types';
 import { cabinetAdvice, seedFirms, seedHouseholds, updateElection, updateMicroeconomy } from './micro';
 
 const clamp = (x:number, lo:number, hi:number) => Math.max(lo, Math.min(hi, x));
@@ -272,7 +272,11 @@ export class EconomyEngine {
 
   private recordHistory(){
     const s=this.state;
-    const h:HistoryPoint={period:periodLabel(s.year,s.quarter),gdp:s.realGDP,growth:s.growth,inflation:s.inflation,unemployment:s.unemployment,debt:s.debtRatio,approval:s.approval,fci:s.fci};
+    const h:HistoryPoint={
+      period:periodLabel(s.year,s.quarter),gdp:s.realGDP,growth:s.growth,inflation:s.inflation,unemployment:s.unemployment,
+      debt:s.debtRatio,approval:s.approval,fci:s.fci,poverty:s.poverty,housingAffordability:s.housingAffordability,
+      bankHealth:s.bankHealth,macroRisk:s.macroRisk,incumbentShare:s.election?.incumbentShare??.5,turnout:s.election?.turnout??.65
+    };
     s.history.push(h); if(s.history.length>48) s.history.shift();
   }
 
@@ -281,7 +285,7 @@ export class EconomyEngine {
     this.state.news.unshift(item); if(this.state.news.length>20) this.state.news.pop();
   }
 
-  advisor(){
+  advisor():AdvisorRecommendation[]{
     const s=this.state;
     const recs:{id:string;why:string;watch:string}[]=[];
     if(s.inflation>.055) recs.push({id:'rate_up',why:'Inflation is above the comfort range; tighter demand and expectations may be needed.',watch:'Inflation, credit, unemployment'});

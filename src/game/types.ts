@@ -90,6 +90,19 @@ export interface HistoryPoint {
   debt: number;
   approval: number;
   fci: number;
+  poverty: number;
+  housingAffordability: number;
+  bankHealth: number;
+  macroRisk: number;
+  incumbentShare: number;
+  turnout: number;
+}
+
+export interface AdvisorRecommendation {
+  id: string;
+  why: string;
+  watch: string;
+  policy: PolicySpec;
 }
 
 export interface Mission {
