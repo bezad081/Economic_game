@@ -1,29 +1,19 @@
-# MACROSTATE V7 — Phaser Edition
+# MACROSTATE V8 — Stable Living City
 
-V7 replaces the hand-written city renderer with Phaser 3.90 + WebGL while keeping the React + TypeScript + Vite economic UI and simulation engine.
+V8 removes Phaser from the critical render path after repeated browser blank-screen crashes. The city is now rendered as responsive SVG with browser-native motion, while the economic simulation remains React + TypeScript + Vite.
 
-## Main upgrades
-- Phaser/WebGL city renderer with independent game loop
-- Smoother lane traffic, signal logic, headway braking, buses/taxis/bikes
-- Pedestrians constrained to sidewalks and district loops
-- Procedural building, tree, street-light and vehicle textures
-- Non-blocking quarter review (opened from Review button)
-- Separate economic indicator chart cards
-- Cinematic Cabinet Briefing start screen
-- Role selection: Chief Economist, Central Bank Governor, Finance Minister, Development Minister
-- Starting scenarios: Balanced, Inflation Shock, Recession, Financial Crisis
-- Accessible / Standard / Expert difficulty presets
-- Responsive layout aimed at 1366x768 and larger displays
-
-## Run
-```bash
-npm install
-npm run dev
-```
+## V8 goals
+- No mysterious black-screen failure: root error boundary and guarded quarter updates.
+- Manual quarter progression by default; optional Auto mode must be explicitly enabled.
+- Responsive living city with animated traffic, pedestrians, construction, protests, bank queues, weather/atmosphere and economy-linked district health.
+- Full-width chart deck with separate economic charts that stay inside their cards.
+- Clear cabinet-style intro and role / scenario / difficulty setup.
+- Beginner decision coach preserved; advanced tools remain available.
 
 ## Build
 ```bash
+npm install
 npm run build
 ```
 
-The included GitHub Pages workflow deploys `dist/` automatically.
+The existing GitHub Pages Vite workflow can deploy `dist/`.

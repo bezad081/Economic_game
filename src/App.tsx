@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import PhaserCity, { type CityView } from './components/PhaserCity';
+import LivingCity, { type CityView } from './components/LivingCity';
 import QuarterPulse from './components/QuarterPulse';
 import OnboardingModal from './components/OnboardingModal';
 import PolicyPanel from './components/PolicyPanel';
@@ -10,10 +10,10 @@ import StartScreen, { type StartSetup } from './components/StartScreen';
 import { EconomyEngine } from './game/economy';
 import type { EconomySnapshot, GameMode, PolicySpec, Tab } from './game/types';
 
-const KEY='macrostate-native-save-v7-1';
-const GUIDE_KEY='macrostate-guide-v7-1';
-const SIMPLE_KEY='macrostate-simple-v7-1';
-const START_KEY='macrostate-started-v7-1';
+const KEY='macrostate-native-save-v8';
+const GUIDE_KEY='macrostate-guide-v8';
+const SIMPLE_KEY='macrostate-simple-v8';
+const START_KEY='macrostate-started-v8';
 const pct=(x:number,d=1)=>`${(x*100).toFixed(d)}%`;
 
 function loadSaved():EconomySnapshot|undefined { try{const raw=localStorage.getItem(KEY);return raw?JSON.parse(raw):undefined}catch{return undefined} }
@@ -23,7 +23,7 @@ export default function App(){
   if(!engineRef.current) engineRef.current=new EconomyEngine(loadSaved()?.mode??'sandbox',loadSaved());
   const [econ,setEcon]=useState(()=>engineRef.current!.snapshot());
   const [tab,setTab]=useState<Tab>('Monetary');
-  const [paused,setPaused]=useState(true);
+  const [autoRun,setAutoRun]=useState(false);
   const [speed,setSpeed]=useState(1);
   const [focus,setFocus]=useState(false);
   const [selected,setSelected]=useState<string|null>(null);
@@ -38,20 +38,12 @@ export default function App(){
   const [quarterBefore,setQuarterBefore]=useState<EconomySnapshot|null>(null);
   const [showPulse,setShowPulse]=useState(false);
   const [started,setStarted]=useState(()=>localStorage.getItem(START_KEY)==='yes');
-  const [role,setRole]=useState<StartSetup['role']>(()=>(localStorage.getItem('macrostate-role-v7-1') as StartSetup['role'])||'Chief Economist');
+  const [role,setRole]=useState<StartSetup['role']>(()=>(localStorage.getItem('macrostate-role-v8') as StartSetup['role'])||'Chief Economist');
 
-  const sync=()=>{const s=engineRef.current!.snapshot();setEcon(s);localStorage.setItem(KEY,JSON.stringify(s))};
-  const quarter=()=>{
-    const before=engineRef.current!.snapshot();
-    engineRef.current!.stepQuarter();
-    const after=engineRef.current!.snapshot();
-    setQuarterBefore(before);
-    setEcon(after);
-    localStorage.setItem(KEY,JSON.stringify(after));
-    setShowPulse(false);
-    setToast(engineRef.current!.state.lastQuarterSummary);
-  };
-  useEffect(()=>{if(paused||!started)return;const ms=speed===1?9500:speed===2?5400:3000;const id=setInterval(quarter,ms);return()=>clearInterval(id)},[paused,speed,started]);
+  const safeSave=(s:EconomySnapshot)=>{try{localStorage.setItem(KEY,JSON.stringify(s))}catch(err){console.warn('Save skipped',err)}};
+  const sync=()=>{try{const s=engineRef.current!.snapshot();setEcon(s);safeSave(s)}catch(err){console.error('Sync failed',err);setToast('A state update was safely blocked. Reload if needed.')}};
+  const quarter=()=>{try{const before=engineRef.current!.snapshot();engineRef.current!.stepQuarter();const after=engineRef.current!.snapshot();setQuarterBefore(before);setEcon(after);safeSave(after);setShowPulse(false);setToast(engineRef.current!.state.lastQuarterSummary)}catch(err){console.error('Quarter advance failed',err);setAutoRun(false);setToast('Quarter advance was stopped safely. Your previous state is preserved.')}};
+  useEffect(()=>{if(!autoRun||!started)return;const ms=speed===1?12000:speed===2?7000:4200;const id=window.setInterval(quarter,ms);return()=>window.clearInterval(id)},[autoRun,speed,started]);
 
   const recommendations=useMemo(()=>engineRef.current!.advisor(),[econ]);
   const enact=(p:PolicySpec)=>{const r=engineRef.current!.enact(p.id);sync();setToast(r.ok?`${p.label} enacted. Let the effects transmit before overreacting.`:r.reason)};
@@ -59,7 +51,7 @@ export default function App(){
   const newGame=(mode:GameMode,setup?:StartSetup)=>{
     engineRef.current=new EconomyEngine(mode);
     if(setup){
-      setRole(setup.role);localStorage.setItem('macrostate-role-v7-1',setup.role);
+      setRole(setup.role);localStorage.setItem('macrostate-role-v8',setup.role);
       if(setup.role==='Central Bank Governor')setTab('Monetary');
       else if(setup.role==='Finance Minister')setTab('Fiscal');
       else if(setup.role==='Development Minister')setTab('Structural');
@@ -71,10 +63,10 @@ export default function App(){
       if(setup.difficulty==='Accessible'){s.policyCapacity=100;s.politicalCapital=85;setSimple(true);}
       if(setup.difficulty==='Expert'){s.policyCapacity=78;s.politicalCapital=58;s.approval=Math.max(.15,s.approval-.04);s.macroRisk=Math.min(100,s.macroRisk+8);setSimple(false);}
     }
-    sync();setSelected(null);setShowPulse(false);setQuarterBefore(null);setPaused(false);setStarted(true);localStorage.setItem(START_KEY,'yes');setToast(mode==='mission'?'Campaign started — follow the mandate and protect the whole economy.':'Sandbox started — every policy tool is available.');
+    sync();setSelected(null);setShowPulse(false);setQuarterBefore(null);setAutoRun(false);setStarted(true);localStorage.setItem(START_KEY,'yes');setToast(mode==='mission'?'Campaign started — follow the mandate and protect the whole economy.':'Sandbox started — every policy tool is available.');
   };
   const guideStart=(mode:GameMode)=>{setGuide(false);newGame(mode);setSimple(true);localStorage.setItem(SIMPLE_KEY,'beginner');localStorage.setItem(GUIDE_KEY,'done');};
-  const continueGame=()=>{setStarted(true);setPaused(false);localStorage.setItem(START_KEY,'yes');};
+  const continueGame=()=>{setStarted(true);setAutoRun(false);localStorage.setItem(START_KEY,'yes');};
   const openGuide=()=>setGuide(true);
   const toggleSimple=()=>setSimple(v=>{const next=!v;localStorage.setItem(SIMPLE_KEY,next?'beginner':'advanced');return next});
   const district=selected?districtContext(selected,econ):null;
@@ -82,16 +74,16 @@ export default function App(){
 
   return <>
   {!started && <StartScreen hasSave={!!loadSaved()} econ={econ} onContinue={continueGame} onStart={newGame} onGuide={openGuide} />}
-  <div className={`app v4 v5 v6 v7 ${focus?'focus':''} ${simple?'simple-mode':'advanced-mode'} ${trendCollapsed?'trend-collapsed':''}`}>
+  <div className={`app v4 v5 v6 v7 v8 ${focus?'focus':''} ${simple?'simple-mode':'advanced-mode'} ${trendCollapsed?'trend-collapsed':''}`}>
     <header className="topbar">
-      <div className="brand"><div className="logo">M</div><div><strong>MACROSTATE</strong><small>{role.toUpperCase()} • V7 PHASER EDITION</small></div></div>
+      <div className="brand"><div className="logo">M</div><div><strong>MACROSTATE</strong><small>{role.toUpperCase()} • V8 LIVING CITY</small></div></div>
       <div className="period"><span>Q{econ.quarter} {econ.year}</span><b>{econ.regime}</b></div>
       <div className="priority-strip"><span>Priority</span><b>{topPriority}</b></div>
       <div className="top-controls">
         <button className="guide-btn" onClick={openGuide}>Guide</button>
         <button className={`mode-toggle ${simple?'beginner':''}`} onClick={toggleSimple}>{simple?'Beginner':'Advanced'}</button>
-        <button onClick={()=>setPaused(v=>!v)}>{paused?'▶ Resume':'Ⅱ Pause'}</button>
-        <div className="speed">{[1,2,4].map(s=><button key={s} onClick={()=>setSpeed(s)} className={speed===s?'active':''}>×{s}</button>)}</div>
+        <button className={autoRun?'active':''} onClick={()=>setAutoRun(v=>!v)}>{autoRun?'Ⅱ Auto':'▶ Auto'}</button>
+        {autoRun&&<div className="speed">{[1,2,4].map(s=><button key={s} onClick={()=>setSpeed(s)} className={speed===s?'active':''}>×{s}</button>)}</div>}
         {quarterBefore&&<button onClick={()=>setShowPulse(v=>!v)}>Review</button>}
         <button className="next-quarter" onClick={quarter}>Next Quarter →</button>
         {!simple&&<><button onClick={()=>setReport(true)}>Brief</button><button onClick={()=>setSystems(true)}>Systems</button><button onClick={()=>setFocus(v=>!v)}>{focus?'Dashboard':'Focus'}</button></>}
@@ -100,7 +92,7 @@ export default function App(){
 
     <main className="game-layout">
       <section className="city-wrap">
-        <PhaserCity econ={econ} focus={focus} view={cityView} onSelect={setSelected}/>
+        <LivingCity econ={econ} view={cityView} selected={selected} onSelect={setSelected} />
         <div className="city-overlay top-left"><span className="live-dot"/> NATIONAL CAPITAL<div>{selected?'District selected':'Click a district to inspect it'}</div></div>
         <div className="city-lenses"><span>City lens</span>{(['City','Prosperity','Jobs','Risk'] as CityView[]).map(v=><button key={v} className={cityView===v?'active':''} onClick={()=>setCityView(v)}>{v}</button>)}</div>
         {district&&<div className={`district-card ${district.tone}`}><header><span>{district.icon}</span><div><small>{selected}</small><b>{district.title}</b></div><button onClick={()=>setSelected(null)}>×</button></header><p>{district.description}</p><div><span>{district.metricLabel}</span><strong>{district.metric}</strong></div></div>}
@@ -111,16 +103,7 @@ export default function App(){
       {!focus&&<PolicyPanel tab={tab} setTab={setTab} econ={econ} onPolicy={enact} onShock={shock} simple={simple} recommendations={recommendations} onAdvanced={()=>{setSimple(false);localStorage.setItem(SIMPLE_KEY,'advanced')}}/>}
     </main>
 
-    {!focus&&<section className="bottom-deck">
-      <div className="metric-rail">
-        <Metric title="GDP Growth" value={pct(econ.growth)} sub={econ.growth>.025?'Healthy activity':econ.growth>0?'Soft growth':'Contraction'} state={econ.growth<0?'bad':econ.growth<.015?'warn':'good'}/>
-        <Metric title="Inflation" value={pct(econ.inflation)} sub={`Expected ${pct(econ.inflationExpected)}`} state={econ.inflation>.06?'bad':econ.inflation>.04?'warn':'good'}/>
-        <Metric title="Unemployment" value={pct(econ.unemployment)} sub={`${econ.totalEmployment} modeled jobs`} state={econ.unemployment>.085?'bad':econ.unemployment>.065?'warn':'good'}/>
-        <Metric title="Approval" value={pct(econ.approval,0)} sub={`National score ${econ.nationalScore.toFixed(0)}`} state={econ.approval<.4?'bad':econ.approval<.52?'warn':'good'}/>
-        {!simple&&<><Metric title="Debt / GDP" value={pct(econ.debtRatio)} sub={`Treasury ${econ.treasury.toFixed(0)}`} state={econ.debtRatio>.95?'bad':econ.debtRatio>.75?'warn':'good'}/><Metric title="Bank Health" value={`${(econ.bankHealth*100).toFixed(0)}`} sub={`FCI ${econ.fci.toFixed(1)}`} state={econ.bankHealth<.5?'bad':econ.bankHealth<.68?'warn':'good'}/></>}
-      </div>
-      <TrendPanel econ={econ} collapsed={trendCollapsed} onToggle={()=>setTrendCollapsed(v=>!v)}/>
-    </section>}
+    {!focus&&<section className="bottom-deck monitor-deck"><TrendPanel econ={econ} collapsed={trendCollapsed} onToggle={()=>setTrendCollapsed(v=>!v)}/></section>}
 
     <footer className="footer"><div className="mode-switch"><button className={econ.mode==='sandbox'?'active':''} onClick={()=>newGame('sandbox')}>Sandbox</button><button className={econ.mode==='mission'?'active':''} onClick={()=>newGame('mission')}>Guided Campaign</button></div><button className="news-toggle" onClick={()=>setShowNews(v=>!v)}>Economic Wire <b>{econ.news.length}</b></button><div className="ticker"><span className={econ.news[0]?.tone}>{econ.news[0]?.period}</span>{econ.news[0]?.text}</div></footer>
     {showNews&&<aside className="news-drawer"><header><b>Economic Wire</b><button onClick={()=>setShowNews(false)}>×</button></header>{econ.news.map(n=><article key={n.id}><span className={n.tone}>{n.period}</span><p>{n.text}</p></article>)}</aside>}

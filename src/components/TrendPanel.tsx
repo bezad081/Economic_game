@@ -62,12 +62,13 @@ function normalizeHistory(econ:EconomySnapshot):HistoryPoint[]{
   return rows.slice(-16) as any;
 }
 
-function formatPct(v:number){return `${(v*100).toFixed(Math.abs(v)<.1?1:0)}%`}
+function formatPct(v:number){const n=Number.isFinite(v)?v:0;return `${(n*100).toFixed(Math.abs(n)<.1?1:0)}%`}
 
 function Sparkline({rows,spec}:{rows:any[];spec:SeriesSpec}){
   const w=240,h=88,p=8;
-  const values=rows.map(r=>spec.transform?spec.transform(r[spec.key]):r[spec.key]);
+  const values=rows.map(r=>{const raw=Number(r[spec.key]);const v=spec.transform?spec.transform(raw):raw;return Number.isFinite(v)?v:0});
   let min=Math.min(...values),max=Math.max(...values);
+  if(!Number.isFinite(min)||!Number.isFinite(max)){min=0;max=.1}
   if(max-min<0.015){min-=0.01;max+=0.01}
   const x=(i:number)=>p+i*(w-p*2)/Math.max(1,rows.length-1);
   const y=(v:number)=>h-p-(v-min)*(h-p*2)/(max-min);
