@@ -10,10 +10,10 @@ import StartScreen, { type StartSetup } from './components/StartScreen';
 import { EconomyEngine } from './game/economy';
 import type { EconomySnapshot, GameMode, PolicySpec, Tab } from './game/types';
 
-const KEY='macrostate-native-save-v1';
-const GUIDE_KEY='macrostate-guide-v6';
-const SIMPLE_KEY='macrostate-simple-v6';
-const START_KEY='macrostate-started-v6';
+const KEY='macrostate-native-save-v7-1';
+const GUIDE_KEY='macrostate-guide-v7-1';
+const SIMPLE_KEY='macrostate-simple-v7-1';
+const START_KEY='macrostate-started-v7-1';
 const pct=(x:number,d=1)=>`${(x*100).toFixed(d)}%`;
 
 function loadSaved():EconomySnapshot|undefined { try{const raw=localStorage.getItem(KEY);return raw?JSON.parse(raw):undefined}catch{return undefined} }
@@ -38,7 +38,7 @@ export default function App(){
   const [quarterBefore,setQuarterBefore]=useState<EconomySnapshot|null>(null);
   const [showPulse,setShowPulse]=useState(false);
   const [started,setStarted]=useState(()=>localStorage.getItem(START_KEY)==='yes');
-  const [role,setRole]=useState<StartSetup['role']>(()=>(localStorage.getItem('macrostate-role-v7') as StartSetup['role'])||'Chief Economist');
+  const [role,setRole]=useState<StartSetup['role']>(()=>(localStorage.getItem('macrostate-role-v7-1') as StartSetup['role'])||'Chief Economist');
 
   const sync=()=>{const s=engineRef.current!.snapshot();setEcon(s);localStorage.setItem(KEY,JSON.stringify(s))};
   const quarter=()=>{
@@ -59,7 +59,7 @@ export default function App(){
   const newGame=(mode:GameMode,setup?:StartSetup)=>{
     engineRef.current=new EconomyEngine(mode);
     if(setup){
-      setRole(setup.role);localStorage.setItem('macrostate-role-v7',setup.role);
+      setRole(setup.role);localStorage.setItem('macrostate-role-v7-1',setup.role);
       if(setup.role==='Central Bank Governor')setTab('Monetary');
       else if(setup.role==='Finance Minister')setTab('Fiscal');
       else if(setup.role==='Development Minister')setTab('Structural');
