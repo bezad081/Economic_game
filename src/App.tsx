@@ -6,12 +6,14 @@ import PolicyPanel from './components/PolicyPanel';
 import ReportModal from './components/ReportModal';
 import SystemsModal from './components/SystemsModal';
 import TrendPanel from './components/TrendPanel';
+import StartScreen from './components/StartScreen';
 import { EconomyEngine } from './game/economy';
 import type { EconomySnapshot, GameMode, PolicySpec, Tab } from './game/types';
 
 const KEY='macrostate-native-save-v1';
-const GUIDE_KEY='macrostate-guide-v5';
-const SIMPLE_KEY='macrostate-simple-v5';
+const GUIDE_KEY='macrostate-guide-v6';
+const SIMPLE_KEY='macrostate-simple-v6';
+const START_KEY='macrostate-started-v6';
 const pct=(x:number,d=1)=>`${(x*100).toFixed(d)}%`;
 
 function loadSaved():EconomySnapshot|undefined { try{const raw=localStorage.getItem(KEY);return raw?JSON.parse(raw):undefined}catch{return undefined} }
@@ -21,42 +23,55 @@ export default function App(){
   if(!engineRef.current) engineRef.current=new EconomyEngine(loadSaved()?.mode??'sandbox',loadSaved());
   const [econ,setEcon]=useState(()=>engineRef.current!.snapshot());
   const [tab,setTab]=useState<Tab>('Monetary');
-  const [paused,setPaused]=useState(false);
+  const [paused,setPaused]=useState(true);
   const [speed,setSpeed]=useState(1);
   const [focus,setFocus]=useState(false);
   const [selected,setSelected]=useState<string|null>(null);
   const [report,setReport]=useState(false);
   const [systems,setSystems]=useState(false);
   const [showNews,setShowNews]=useState(false);
-  const [guide,setGuide]=useState(()=>localStorage.getItem(GUIDE_KEY)!=='done');
+  const [guide,setGuide]=useState(false);
   const [simple,setSimple]=useState(()=>localStorage.getItem(SIMPLE_KEY)!=='advanced');
   const [trendCollapsed,setTrendCollapsed]=useState(false);
-  const [toast,setToast]=useState('Welcome. Read the priority card, make one move, then advance a quarter.');
+  const [toast,setToast]=useState('Welcome. Read the objective, make one move, then advance a quarter.');
   const [cityView,setCityView]=useState<CityView>('City');
   const [quarterBefore,setQuarterBefore]=useState<EconomySnapshot|null>(null);
   const [showPulse,setShowPulse]=useState(false);
+  const [started,setStarted]=useState(()=>localStorage.getItem(START_KEY)==='yes');
 
   const sync=()=>{const s=engineRef.current!.snapshot();setEcon(s);localStorage.setItem(KEY,JSON.stringify(s))};
-  const quarter=()=>{const before=engineRef.current!.snapshot();engineRef.current!.stepQuarter();const after=engineRef.current!.snapshot();setQuarterBefore(before);setEcon(after);localStorage.setItem(KEY,JSON.stringify(after));setShowPulse(true);setToast(engineRef.current!.state.lastQuarterSummary)};
-  useEffect(()=>{if(paused)return;const ms=speed===1?9500:speed===2?5400:3000;const id=setInterval(quarter,ms);return()=>clearInterval(id)},[paused,speed]);
+  const quarter=()=>{
+    const before=engineRef.current!.snapshot();
+    engineRef.current!.stepQuarter();
+    const after=engineRef.current!.snapshot();
+    setQuarterBefore(before);
+    setEcon(after);
+    localStorage.setItem(KEY,JSON.stringify(after));
+    setShowPulse(after.turn>0);
+    setToast(engineRef.current!.state.lastQuarterSummary);
+  };
+  useEffect(()=>{if(paused||!started)return;const ms=speed===1?9500:speed===2?5400:3000;const id=setInterval(quarter,ms);return()=>clearInterval(id)},[paused,speed,started]);
 
   const recommendations=useMemo(()=>engineRef.current!.advisor(),[econ]);
   const enact=(p:PolicySpec)=>{const r=engineRef.current!.enact(p.id);sync();setToast(r.ok?`${p.label} enacted. Let the effects transmit before overreacting.`:r.reason)};
   const shock=(k:'oil'|'financial'|'sanctions'|'boom'|'food')=>{engineRef.current!.triggerShock(k);sync();setToast(`${k} scenario shock triggered.`)};
-  const newGame=(mode:GameMode)=>{engineRef.current=new EconomyEngine(mode);sync();setSelected(null);setToast(mode==='mission'?'Guided Campaign started — follow the mission objective.':'New Sandbox started.')};
-  const closeGuide=()=>{localStorage.setItem(GUIDE_KEY,'done');setGuide(false)};
-  const guideStart=(mode:GameMode)=>{newGame(mode);setSimple(true);localStorage.setItem(SIMPLE_KEY,'beginner');closeGuide()};
+  const newGame=(mode:GameMode)=>{engineRef.current=new EconomyEngine(mode);sync();setSelected(null);setShowPulse(false);setQuarterBefore(null);setPaused(false);setStarted(true);localStorage.setItem(START_KEY,'yes');setToast(mode==='mission'?'Guided Campaign started — follow the mission objective.':'New Sandbox started.');};
+  const guideStart=(mode:GameMode)=>{setGuide(false);newGame(mode);setSimple(true);localStorage.setItem(SIMPLE_KEY,'beginner');localStorage.setItem(GUIDE_KEY,'done');};
+  const continueGame=()=>{setStarted(true);setPaused(false);localStorage.setItem(START_KEY,'yes');};
+  const openGuide=()=>setGuide(true);
   const toggleSimple=()=>setSimple(v=>{const next=!v;localStorage.setItem(SIMPLE_KEY,next?'beginner':'advanced');return next});
   const district=selected?districtContext(selected,econ):null;
   const topPriority=priorityText(econ);
 
-  return <div className={`app v4 v5 ${focus?'focus':''} ${simple?'simple-mode':'advanced-mode'} ${trendCollapsed?'trend-collapsed':''}`}>
+  return <>
+  {!started && <StartScreen hasSave={!!loadSaved()} econ={econ} onContinue={continueGame} onStart={newGame} onGuide={openGuide} />}
+  <div className={`app v4 v5 v6 ${focus?'focus':''} ${simple?'simple-mode':'advanced-mode'} ${trendCollapsed?'trend-collapsed':''}`}>
     <header className="topbar">
-      <div className="brand"><div className="logo">M</div><div><strong>MACROSTATE</strong><small>POLICY SIMULATOR • V5</small></div></div>
+      <div className="brand"><div className="logo">M</div><div><strong>MACROSTATE</strong><small>CHIEF ECONOMIC STRATEGIST • V6</small></div></div>
       <div className="period"><span>Q{econ.quarter} {econ.year}</span><b>{econ.regime}</b></div>
       <div className="priority-strip"><span>Priority</span><b>{topPriority}</b></div>
       <div className="top-controls">
-        <button className="guide-btn" onClick={()=>setGuide(true)}>?</button>
+        <button className="guide-btn" onClick={openGuide}>Guide</button>
         <button className={`mode-toggle ${simple?'beginner':''}`} onClick={toggleSimple}>{simple?'Beginner':'Advanced'}</button>
         <button onClick={()=>setPaused(v=>!v)}>{paused?'▶ Resume':'Ⅱ Pause'}</button>
         <div className="speed">{[1,2,4].map(s=><button key={s} onClick={()=>setSpeed(s)} className={speed===s?'active':''}>×{s}</button>)}</div>
@@ -68,12 +83,12 @@ export default function App(){
     <main className="game-layout">
       <section className="city-wrap">
         <CityCanvas econ={econ} focus={focus} view={cityView} onSelect={setSelected}/>
-        <div className="city-overlay top-left"><span className="live-dot"/> LIVE CAPITAL<div>{selected?'District selected':'Click a district to understand it'}</div></div>
+        <div className="city-overlay top-left"><span className="live-dot"/> NATIONAL CAPITAL<div>{selected?'District selected':'Click a district to inspect it'}</div></div>
         <div className="city-lenses"><span>City lens</span>{(['City','Prosperity','Jobs','Risk'] as CityView[]).map(v=><button key={v} className={cityView===v?'active':''} onClick={()=>setCityView(v)}>{v}</button>)}</div>
         {district&&<div className={`district-card ${district.tone}`}><header><span>{district.icon}</span><div><small>{selected}</small><b>{district.title}</b></div><button onClick={()=>setSelected(null)}>×</button></header><p>{district.description}</p><div><span>{district.metricLabel}</span><strong>{district.metric}</strong></div></div>}
         {econ.activeMission&&<div className="mission-card"><span>GUIDED OBJECTIVE</span><b>{econ.activeMission.title}</b><p>{econ.activeMission.description}</p><div><progress value={econ.activeMission.progress} max={1}/><small>{econ.activeMission.targetText} • {Math.max(0,econ.activeMission.deadline-econ.turn)}Q left</small></div></div>}
         <div className="toast"><span>●</span>{toast}</div>
-        {showPulse&&<QuarterPulse previous={quarterBefore} current={econ} onClose={()=>setShowPulse(false)}/>}
+        {showPulse&&<QuarterPulse previous={quarterBefore} current={econ} onClose={()=>setShowPulse(false)}/>}        
       </section>
       {!focus&&<PolicyPanel tab={tab} setTab={setTab} econ={econ} onPolicy={enact} onShock={shock} simple={simple} recommendations={recommendations} onAdvanced={()=>{setSimple(false);localStorage.setItem(SIMPLE_KEY,'advanced')}}/>}
     </main>
@@ -93,8 +108,8 @@ export default function App(){
     {showNews&&<aside className="news-drawer"><header><b>Economic Wire</b><button onClick={()=>setShowNews(false)}>×</button></header>{econ.news.map(n=><article key={n.id}><span className={n.tone}>{n.period}</span><p>{n.text}</p></article>)}</aside>}
     {report&&<ReportModal econ={econ} onClose={()=>setReport(false)}/>} 
     {systems&&<SystemsModal econ={econ} advice={engineRef.current!.cabinet()} onPolicy={(p)=>{enact(p);setSystems(false)}} onClose={()=>setSystems(false)}/>} 
-    {guide&&<OnboardingModal econ={econ} onClose={closeGuide} onStart={guideStart}/>} 
-  </div>;
+    {guide&&<OnboardingModal econ={econ} onClose={()=>setGuide(false)} onStart={guideStart}/>} 
+  </div></>;
 }
 
 function Metric({title,value,sub,state}:{title:string;value:string;sub:string;state:'good'|'warn'|'bad'}){return <div className={`metric ${state}`}><span>{title}</span><strong>{value}</strong><small>{sub}</small></div>}

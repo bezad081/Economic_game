@@ -208,7 +208,26 @@ function drawTraffic(ctx:CanvasRenderingContext2D,w:number,h:number,e:EconomySna
 }
 
 function drawWalkers(ctx:CanvasRenderingContext2D,e:EconomySnapshot,city:ReturnType<typeof createCity>){
-  city.walkers.forEach((p,i)=>{if(i>58+Math.round(e.growth*120))return;ctx.fillStyle=p.mood<e.approval?'#74d99b':'#e59b7d';ctx.beginPath();ctx.arc(p.x,p.y,1.7,0,Math.PI*2);ctx.fill();ctx.strokeStyle='rgba(9,16,20,.7)';ctx.beginPath();ctx.moveTo(p.x,p.y+2);ctx.lineTo(p.x,p.y+5);ctx.stroke()})
+  city.walkers.forEach((p,i)=>{
+    if(i>56+Math.round(e.growth*120))return;
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    const happy=p.mood<e.approval;
+    ctx.fillStyle=happy?'#79e0ab':'#e7ad87';
+    ctx.beginPath();
+    ctx.arc(0,-3.3,1.5,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle=happy?'#aef2ca':'#f0c1a0';
+    ctx.lineWidth=.9;
+    ctx.beginPath();
+    ctx.moveTo(0,-1.5); ctx.lineTo(0,2.2);
+    ctx.moveTo(0,.2); ctx.lineTo(-1.9,1.2);
+    ctx.moveTo(0,.2); ctx.lineTo(1.9,1.3);
+    ctx.moveTo(0,2.2); ctx.lineTo(-1.4,4.3);
+    ctx.moveTo(0,2.2); ctx.lineTo(1.4,4.2);
+    ctx.stroke();
+    ctx.restore();
+  })
 }
 
 function drawStressEvents(ctx:CanvasRenderingContext2D,w:number,h:number,e:EconomySnapshot,focus:boolean,t:number){

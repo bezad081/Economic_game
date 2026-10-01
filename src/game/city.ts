@@ -1,19 +1,23 @@
 import type { EconomySnapshot } from './types';
 
 export interface Vehicle { x:number; y:number; vx:number; lane:number; axis:'h'|'v'; kind:'car'|'bus'|'taxi'|'bike'; phase:number; }
-export interface Walker { x:number; y:number; tx:number; ty:number; speed:number; mood:number; }
+export interface Walker { x:number; y:number; tx:number; ty:number; speed:number; mood:number; path:number; pause:number; }
 export interface CityState { vehicles:Vehicle[]; walkers:Walker[]; t:number; weather:'clear'|'rain'; weatherUntil:number; }
 
 const seeded=(i:number)=>{ const x=Math.sin(i*999.91)*43758.5453; return x-Math.floor(x); };
 
 export function createCity():CityState {
   const vehicles:Vehicle[]=[];
-  for(let i=0;i<46;i++){
-    const vertical=i%7===0;
-    vehicles.push({x:seeded(i)*1200,y:seeded(i+22)*700,vx:38+seeded(i+44)*44,lane:vertical?i%2:i%4,axis:vertical?'v':'h',kind:i%13===0?'bus':i%8===0?'taxi':i%6===0?'bike':'car',phase:seeded(i+80)*10});
+  for(let i=0;i<52;i++){
+    const vertical=i%6===0 || i%9===0;
+    vehicles.push({x:seeded(i)*1200,y:seeded(i+22)*700,vx:34+seeded(i+44)*36,lane:vertical?i%2:i%4,axis:vertical?'v':'h',kind:i%13===0?'bus':i%8===0?'taxi':i%6===0?'bike':'car',phase:seeded(i+80)*10});
   }
   const walkers:Walker[]=[];
-  for(let i=0;i<92;i++) walkers.push({x:70+seeded(i+200)*1060,y:70+seeded(i+400)*590,tx:70+seeded(i+600)*1060,ty:70+seeded(i+800)*590,speed:12+seeded(i+1000)*20,mood:seeded(i+1200)});
+  for(let i=0;i<80;i++) {
+    const start=sidewalkPoint(i,1200,700);
+    const target=sidewalkPoint(i+200,1200,700);
+    walkers.push({x:start[0],y:start[1],tx:target[0],ty:target[1],speed:10+seeded(i+1000)*12,mood:seeded(i+1200),path:i%8,pause:0});
+  }
   return {vehicles,walkers,t:0,weather:'clear',weatherUntil:24};
 }
 
@@ -28,7 +32,7 @@ export function updateCity(city:CityState, dt:number, econ:EconomySnapshot, w:nu
 
   for(const v of city.vehicles){
     const dir=v.lane%2===0?1:-1;
-    const free=(v.kind==='bus'?44:v.kind==='bike'?31:61)*speedMacro;
+    const free=(v.kind==='bus'?42:v.kind==='bike'?28:58)*speedMacro;
     let stop=false, headway=999;
     if(v.axis==='h'){
       v.y=roadYs[v.lane%roadYs.length] + (v.lane%2===0?-6:6);
@@ -43,21 +47,40 @@ export function updateCity(city:CityState, dt:number, econ:EconomySnapshot, w:nu
     }
     const follow=headway<16?0:headway<34?(headway-16)/18:1;
     const desired=stop?0:free*follow;
-    const response=desired<Math.abs(v.vx)?6.0:2.7;
+    const response=desired<Math.abs(v.vx)?5.5:2.4;
     v.vx += (desired-Math.abs(v.vx))*Math.min(1,dt*response);
     if(v.axis==='h'){
       v.x += dir*Math.abs(v.vx)*dt;
-      if(v.x>w+40)v.x=-40;if(v.x<-40)v.x=w+40;
+      if(v.x>w+50)v.x=-50;if(v.x<-50)v.x=w+50;
     }else{
       v.y += dir*Math.abs(v.vx)*dt;
-      if(v.y>h+40)v.y=h*.22-40;if(v.y<h*.22-40)v.y=h+40;
+      if(v.y>h+50)v.y=h*.22-50;if(v.y<h*.22-50)v.y=h+50;
     }
   }
 
-  for(const p of city.walkers){
+  for(let i=0;i<city.walkers.length;i++){
+    const p=city.walkers[i];
+    if(p.pause>0){p.pause-=dt;continue;}
     const dx=p.tx-p.x,dy=p.ty-p.y,d=Math.hypot(dx,dy);
-    if(d<8){p.tx=50+Math.random()*Math.max(100,w-100);p.ty=h*.24+25+Math.random()*Math.max(100,h*.68)}
-    else{const sp=p.speed*(.75+econ.approval*.45);p.x+=dx/d*sp*dt;p.y+=dy/d*sp*dt}
+    if(d<5){
+      const next=sidewalkPoint(i+Math.floor(city.t*3)+p.path,w,h);
+      p.tx=next[0]; p.ty=next[1];
+      p.pause=.15+seeded(i+city.t)*.55;
+    } else {
+      const sp=p.speed*(.72+econ.approval*.36);
+      p.x+=dx/d*sp*dt; p.y+=dy/d*sp*dt;
+    }
     p.x=Math.max(20,Math.min(w-20,p.x));p.y=Math.max(h*.23,Math.min(h-20,p.y));
   }
+}
+
+function sidewalkPoint(seed:number,w:number,h:number):[number,number]{
+  const points:[number,number][]=[
+    [w*.08,h*.27],[w*.18,h*.27],[w*.31,h*.27],[w*.48,h*.27],[w*.67,h*.27],[w*.84,h*.27],
+    [w*.08,h*.47],[w*.18,h*.47],[w*.31,h*.47],[w*.48,h*.47],[w*.67,h*.47],[w*.84,h*.47],
+    [w*.08,h*.67],[w*.18,h*.67],[w*.31,h*.67],[w*.48,h*.67],[w*.67,h*.67],[w*.84,h*.67],
+    [w*.08,h*.80],[w*.18,h*.80],[w*.31,h*.80],[w*.48,h*.80],[w*.67,h*.80],[w*.84,h*.80],
+    [w*.54,h*.34],[w*.54,h*.58],[w*.58,h*.34],[w*.58,h*.58]
+  ];
+  return points[Math.floor(seeded(seed)*points.length)]!;
 }
