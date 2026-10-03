@@ -222,19 +222,43 @@ export class EconomyEngine {
 
   private updateEvents(){
     const s=this.state;
+    const followUps:MacroEvent[]=[];
     for(const e of s.activeEvents){
-      if(e.status==='responded' && s.turn>e.startedTurn){e.status='expired';this.pushNews(`Event contained: ${e.title}. Response: ${e.resolvedBy}.`,'good');continue;}
+      if(e.status==='responded' && s.turn>e.startedTurn){
+        e.status='expired';
+        const bonus=this.eventResolutionBonus(e.kind,e.severity);
+        if(Object.keys(bonus).length) s.impulses.push({id:`event-resolution-${e.id}`,label:`Resolution: ${e.title}`,age:0,duration:3,effects:bonus});
+        this.pushNews(`Event contained: ${e.title}. Response: ${e.resolvedBy}.`,'good');
+        continue;
+      }
       if(e.status==='active' && s.turn>e.deadlineTurn){
         e.status='expired';
         const penalty=this.eventPenalty(e.kind,e.severity);
-        s.impulses.push({id:`event-penalty-${e.id}`,label:`Escalation: ${e.title}`,age:0,duration:3,effects:penalty});
+        s.impulses.push({id:`event-penalty-${e.id}`,label:`Escalation: ${e.title}`,age:0,duration:4,effects:penalty});
         s.approval=clamp(s.approval-.008*e.severity,.08,.92);
+        const next=this.followUpEvent(e);
+        if(next) followUps.push(next);
         this.pushNews(`Unresolved event escalated: ${e.title}.`,'bad');
       }
     }
     const finished=s.activeEvents.filter(e=>e.status==='expired');
-    if(finished.length){s.eventHistory.unshift(...finished);s.eventHistory=s.eventHistory.slice(0,16);}
+    if(finished.length){s.eventHistory.unshift(...finished);s.eventHistory=s.eventHistory.slice(0,24);}
     s.activeEvents=s.activeEvents.filter(e=>e.status!=='expired');
+    for(const e of followUps){s.activeEvents.push(e);s.impulses.push({id:`event-${e.id}`,label:e.title,age:0,duration:4,effects:this.followUpImpulse(e.kind,e.severity)});this.pushNews(`Event chain advanced: ${e.title}.`,'bad');}
+  }
+
+  private eventResolutionBonus(kind:MacroEvent['kind'],severity:number):Effects{
+    const m=Math.max(1,severity)/4;
+    const map:Record<MacroEvent['kind'],Effects>={
+      currency:{fx:-.018*m,inflation:-.002*m,confidence:.012*m},
+      banking:{bank:.025*m,credit:.012*m,confidence:.014*m},
+      energy:{energy:.02*m,inflation:-.002*m,confidence:.008*m},
+      global:{growth:.002*m,confidence:.010*m},
+      housing:{bank:.008*m,confidence:.008*m},
+      wages:{inflation:-.002*m,confidence:.006*m},
+      debt:{debt:-.006*m,confidence:.012*m},
+      technology:{tech:.6*m,growth:.0015*m,confidence:.012*m}
+    };return map[kind];
   }
 
   private eventPenalty(kind:MacroEvent['kind'],severity:number):Effects{
@@ -251,25 +275,60 @@ export class EconomyEngine {
     };return map[kind];
   }
 
+  private followUpImpulse(kind:MacroEvent['kind'],severity:number):Effects{
+    const m=Math.max(1,severity)/3;
+    const map:Record<MacroEvent['kind'],Effects>={
+      currency:{inflation:.005*m,fx:.028*m,confidence:-.016*m},
+      banking:{credit:-.025*m,growth:-.004*m,unemployment:.002*m},
+      energy:{inflation:.005*m,growth:-.003*m},
+      global:{growth:-.004*m,unemployment:.003*m,confidence:-.018*m},
+      housing:{bank:-.016*m,credit:-.012*m,confidence:-.015*m},
+      wages:{inflation:.005*m,confidence:-.010*m},
+      debt:{fx:.02*m,debt:.01*m,confidence:-.02*m},
+      technology:{tech:-.3*m,confidence:-.008*m}
+    } as any;return map[kind];
+  }
+
+  private followUpEvent(parent:MacroEvent):MacroEvent|null{
+    if(parent.severity<3 || (parent.stage??1)>=3) return null;
+    const s=this.state;
+    const stage=(parent.stage??1)+1;
+    const chainId=parent.chainId??parent.id;
+    const defs:Record<MacroEvent['kind'],{kind:MacroEvent['kind'];title:string;description:string;response:string[];label:string;learning:string;consequence:string}>={
+      currency:{kind:'wages',title:'Imported inflation second round',description:'The currency shock is now feeding wage claims and core inflation.',response:['rate_up','food_subsidy','business_reform'],label:'Prevent inflation persistence',learning:'Exchange-rate shocks can become domestic inflation when expectations and wages adjust.',consequence:'Core inflation becomes more persistent.'},
+      banking:{kind:'global',title:'Credit crunch reaches the real economy',description:'Weak bank balance sheets are now reducing investment, hiring and working capital.',response:['bank_recap','sme_credit','qe'],label:'Restore credit before layoffs spread',learning:'Bank stress can turn into a real-economy recession through investment and employment.',consequence:'Investment and employment weaken.'},
+      energy:{kind:'wages',title:'Cost-of-living wage pressure',description:'Energy prices are feeding wage negotiations and service-sector inflation.',response:['rate_up','energy_subsidy','infra_up'],label:'Contain second-round price effects',learning:'Supply shocks become persistent when wage and expectation channels activate.',consequence:'Wages and core inflation accelerate.'},
+      global:{kind:'banking',title:'Export weakness hits corporate balance sheets',description:'Lower foreign demand is weakening cash flow and raising credit risk at exposed firms.',response:['sme_credit','export_support','rate_down'],label:'Protect viable firms and credit',learning:'External demand shocks can migrate into the banking system through corporate defaults.',consequence:'Bank asset quality deteriorates.'},
+      housing:{kind:'banking',title:'Mortgage losses pressure banks',description:'Housing weakness is now showing up in bank collateral values and loan quality.',response:['bank_recap','macroprudential','housing_support'],label:'Stop housing stress becoming banking stress',learning:'Property cycles are macro-financial because collateral values affect bank lending capacity.',consequence:'Bank health and credit weaken.'},
+      wages:{kind:'currency',title:'Inflation expectations de-anchor',description:'Persistent wage-price pressure is weakening currency and inflation credibility.',response:['rate_up','support_fx','austerity'],label:'Re-anchor expectations',learning:'Persistent inflation can spill into exchange rates and sovereign risk.',consequence:'FX and sovereign risk rise.'},
+      debt:{kind:'currency',title:'Fiscal stress becomes external pressure',description:'Higher sovereign risk is spilling into capital flows and the exchange rate.',response:['austerity','income_tax_up','imf_bailout'],label:'Break the debt–currency loop',learning:'Debt credibility and external stability can reinforce each other in both directions.',consequence:'Currency pressure intensifies.'},
+      technology:{kind:'global',title:'Productivity opportunity fades',description:'Investment plans are moving abroad as the reform window closes.',response:['research_grant','business_reform','fdi_incentives'],label:'Recover the investment window',learning:'Structural opportunities are time-sensitive and influence future potential output.',consequence:'Potential growth is lower than it could have been.'}
+    };
+    const d=defs[parent.kind];
+    const severity=clamp(parent.severity-1+Math.round(this.rng.range(0,1)),2,5) as MacroEvent['severity'];
+    return {id:`evt-chain-${d.kind}-${s.turn}-${Math.floor(this.rng.next()*9999)}`,kind:d.kind,title:d.title,description:d.description,severity,startedTurn:s.turn,deadlineTurn:s.turn+(severity>=4?2:3),responsePolicyIds:d.response,responseLabel:d.label,learning:d.learning,status:'active',chainId,parentEventId:parent.id,stage,consequence:d.consequence};
+  }
+
   private maybeGenerateEvent(){
     const s=this.state;
-    if(s.activeEvents.length>=2) return;
-    const riskChance=.07+.0010*s.macroRisk+(s.mode==='mission'?.025:0);
+    if(s.activeEvents.length>=3) return;
+    const quietBonus=s.turn<2?-.04:0;
+    const riskChance=clamp(.10+.0014*s.macroRisk+(s.mode==='mission'?.035:0)+quietBonus,.035,.30);
     if(this.rng.next()>riskChance) return;
-    const candidates:{kind:MacroEvent['kind'];weight:number;title:string;description:string;severity:number;response:string[];label:string;learning:string;effects:Effects}[]=[
-      {kind:'currency',weight:.7+Math.max(0,s.exchangeRate-1)*3+Math.max(0,s.inflation-.05)*5,title:'Currency pressure wave',description:'FX demand is rising and imported inflation risk is building.',severity:s.exchangeRate>1.22?4:3,response:['support_fx','rate_up','imf_bailout'],label:'Stabilize FX expectations',learning:'Currency stress links inflation credibility, reserves and interest-rate policy.',effects:{fx:.025,inflation:.003,confidence:-.012}},
-      {kind:'banking',weight:.55+Math.max(0,.72-s.bankHealth)*4,title:'Bank funding squeeze',description:'Wholesale funding costs are rising and credit transmission is weakening.',severity:s.bankHealth<.55?5:3,response:['bank_recap','qe','macroprudential'],label:'Restore financial transmission',learning:'Weak banks can block monetary transmission even when policy rates fall.',effects:{bank:-.035,credit:-.02,confidence:-.02}},
-      {kind:'energy',weight:.45+Math.max(0,.72-s.energySecurity)*2,title:'Energy supply disruption',description:'Energy costs are threatening production and headline inflation.',severity:s.energySecurity<.55?4:2,response:['energy_subsidy','infra_up','port_upgrade'],label:'Protect supply and households',learning:'Supply shocks create a difficult inflation–growth trade-off.',effects:{energy:-.035,inflation:.005,growth:-.002}},
-      {kind:'global',weight:.5,title:'Global demand slowdown',description:'Export orders are weakening as external growth cools.',severity:2,response:['export_support','fdi_incentives','stimulus'],label:'Support demand without destabilizing prices',learning:'Open economies transmit foreign demand through exports, confidence and investment.',effects:{growth:-.003,confidence:-.018}},
-      {kind:'housing',weight:.35+Math.max(0,s.housingIndex-120)/80,title:'Housing correction risk',description:'Housing valuations and financing conditions are diverging.',severity:s.housingIndex>150?4:2,response:['housing_support','macroprudential','rate_down'],label:'Manage housing and credit risk',learning:'Housing connects rates, bank balance sheets, household wealth and construction.',effects:{confidence:-.012,bank:-.012}},
-      {kind:'wages',weight:.35+Math.max(0,.05-s.unemployment)*8,title:'Wage-price pressure',description:'Labor-market tightness is lifting wage settlements and core inflation.',severity:s.wageGrowth>.07?4:2,response:['rate_up','education_up','business_reform'],label:'Anchor inflation without crushing jobs',learning:'Tight labor markets can sustain core inflation through wage persistence.',effects:{inflation:.004}},
-      {kind:'debt',weight:.3+Math.max(0,s.debtRatio-.75)*2,title:'Sovereign funding stress',description:'Bond investors demand a higher premium for fiscal risk.',severity:s.debtRatio>1?5:3,response:['austerity','income_tax_up','imf_bailout'],label:'Rebuild fiscal credibility',learning:'Debt dynamics depend on growth, primary balances and effective interest costs.',effects:{debt:.008,confidence:-.02}},
-      {kind:'technology',weight:.25,title:'Technology investment window',description:'A private investment wave creates an opportunity to lift potential output.',severity:1,response:['research_grant','education_up','business_reform'],label:'Capture the productivity opportunity',learning:'Structural policy works slowly but can raise non-inflationary growth capacity.',effects:{tech:.5,growth:.001,confidence:.012}}
+    const candidates:{kind:MacroEvent['kind'];weight:number;title:string;description:string;severity:number;response:string[];label:string;learning:string;effects:Effects;consequence:string}[]=[
+      {kind:'currency',weight:.7+Math.max(0,s.exchangeRate-1)*3+Math.max(0,s.inflation-.05)*5,title:'Currency pressure wave',description:'FX demand is rising and imported inflation risk is building.',severity:s.exchangeRate>1.22?4:3,response:['support_fx','rate_up','imf_bailout'],label:'Stabilize FX expectations',learning:'Currency stress links inflation credibility, reserves and interest-rate policy.',effects:{fx:.025,inflation:.003,confidence:-.012},consequence:'If ignored, imported inflation can spread into wages.'},
+      {kind:'banking',weight:.55+Math.max(0,.72-s.bankHealth)*4,title:'Bank funding squeeze',description:'Wholesale funding costs are rising and credit transmission is weakening.',severity:s.bankHealth<.55?5:3,response:['bank_recap','qe','macroprudential'],label:'Restore financial transmission',learning:'Weak banks can block monetary transmission even when policy rates fall.',effects:{bank:-.035,credit:-.02,confidence:-.02},consequence:'If unresolved, a credit crunch can hit jobs and investment.'},
+      {kind:'energy',weight:.45+Math.max(0,.72-s.energySecurity)*2,title:'Energy supply disruption',description:'Energy costs are threatening production and headline inflation.',severity:s.energySecurity<.55?4:2,response:['energy_subsidy','infra_up','port_upgrade'],label:'Protect supply and households',learning:'Supply shocks create a difficult inflation–growth trade-off.',effects:{energy:-.035,inflation:.005,growth:-.002},consequence:'If persistent, wage-price pressure may follow.'},
+      {kind:'global',weight:.5,title:'Global demand slowdown',description:'Export orders are weakening as external growth cools.',severity:2,response:['export_support','fdi_incentives','stimulus'],label:'Support demand without destabilizing prices',learning:'Open economies transmit foreign demand through exports, confidence and investment.',effects:{growth:-.003,confidence:-.018},consequence:'If firms weaken, bank credit quality can deteriorate.'},
+      {kind:'housing',weight:.35+Math.max(0,s.housingIndex-120)/80,title:'Housing correction risk',description:'Housing valuations and financing conditions are diverging.',severity:s.housingIndex>150?4:2,response:['housing_support','macroprudential','rate_down'],label:'Manage housing and credit risk',learning:'Housing connects rates, bank balance sheets, household wealth and construction.',effects:{confidence:-.012,bank:-.012},consequence:'If ignored, mortgage losses can pressure banks.'},
+      {kind:'wages',weight:.35+Math.max(0,.05-s.unemployment)*8,title:'Wage-price pressure',description:'Labor-market tightness is lifting wage settlements and core inflation.',severity:s.wageGrowth>.07?4:2,response:['rate_up','education_up','business_reform'],label:'Anchor inflation without crushing jobs',learning:'Tight labor markets can sustain core inflation through wage persistence.',effects:{inflation:.004},consequence:'If ignored, expectations and FX credibility may weaken.'},
+      {kind:'debt',weight:.3+Math.max(0,s.debtRatio-.75)*2,title:'Sovereign funding stress',description:'Bond investors demand a higher premium for fiscal risk.',severity:s.debtRatio>1?5:3,response:['austerity','income_tax_up','imf_bailout'],label:'Rebuild fiscal credibility',learning:'Debt dynamics depend on growth, primary balances and effective interest costs.',effects:{debt:.008,confidence:-.02},consequence:'If ignored, capital outflow can pressure the currency.'},
+      {kind:'technology',weight:.25,title:'Technology investment window',description:'A private investment wave creates an opportunity to lift potential output.',severity:1,response:['research_grant','education_up','business_reform'],label:'Capture the productivity opportunity',learning:'Structural policy works slowly but can raise non-inflationary growth capacity.',effects:{tech:.5,growth:.001,confidence:.012},consequence:'If missed, investment may relocate and potential growth will be lower.'}
     ];
     const total=candidates.reduce((a,c)=>a+c.weight,0);let r=this.rng.next()*total;let c=candidates[0];for(const x of candidates){r-=x.weight;if(r<=0){c=x;break;}}
     const sev=clamp(Math.round(c.severity+this.rng.range(-.5,.5)),1,5) as MacroEvent['severity'];
     const id=`evt-${c.kind}-${s.turn}-${Math.floor(this.rng.next()*9999)}`;
-    const event:MacroEvent={id,kind:c.kind,title:c.title,description:c.description,severity:sev,startedTurn:s.turn,deadlineTurn:s.turn+(sev>=4?2:3),responsePolicyIds:c.response,responseLabel:c.label,learning:c.learning,status:'active'};
+    const event:MacroEvent={id,kind:c.kind,title:c.title,description:c.description,severity:sev,startedTurn:s.turn,deadlineTurn:s.turn+(sev>=4?2:3),responsePolicyIds:c.response,responseLabel:c.label,learning:c.learning,status:'active',chainId:id,stage:1,consequence:c.consequence};
     s.activeEvents.push(event);
     s.impulses.push({id:`event-${id}`,label:c.title,age:0,duration:3,effects:c.effects});
     this.pushNews(`Policy alert: ${c.title}.`,'bad');
@@ -370,15 +429,56 @@ export class EconomyEngine {
 
   advisor():AdvisorRecommendation[]{
     const s=this.state;
-    const recs:{id:string;why:string;watch:string}[]=[];
-    if(s.inflation>.055) recs.push({id:'rate_up',why:'Inflation is above the comfort range; tighter demand and expectations may be needed.',watch:'Inflation, credit, unemployment'});
-    if(s.unemployment>.075 || s.growth<0) recs.push({id:'sme_credit',why:'Labor-market slack is elevated; targeted firm credit can support hiring.',watch:'Jobs, bank health, inflation'});
-    if(s.debtRatio>.9) recs.push({id:'austerity',why:'Debt service is becoming a macro-financial risk.',watch:'Debt, growth, approval'});
-    if(s.bankHealth<.60) recs.push({id:'bank_recap',why:'Weak banks are impairing credit transmission.',watch:'Bank health, credit growth, debt'});
-    if(s.technology<76) recs.push({id:'research_grant',why:'Productivity is lagging and constrains non-inflationary growth.',watch:'Technology, potential GDP, debt'});
-    if(s.housingAffordability<.55) recs.push({id:'housing_support',why:'Housing affordability is deteriorating.',watch:'Housing index, affordability, debt'});
-    if(!recs.length) recs.push({id:'business_reform',why:'Conditions are balanced; structural reform can raise medium-term capacity.',watch:'Technology, confidence, growth'});
-    return recs.slice(0,4).map(r=>({...r,policy:POLICIES.find(p=>p.id===r.id)!}));
+    const needs:Partial<Record<keyof Effects,number>>={
+      growth:clamp((.025-s.growth)/.055,-1,1),
+      inflation:clamp((.025-s.inflation)/.055,-1,1),
+      unemployment:clamp((.05-s.unemployment)/.085,-1,1),
+      debt:clamp((.68-s.debtRatio)/.55,-1,1),
+      approval:clamp((.55-s.approval)/.35,-1,1),
+      bank:clamp((.76-s.bankHealth)/.38,-1,1),
+      fx:clamp((1-s.exchangeRate)/.32,-1,1),
+      credit:clamp((.03-s.creditGrowth)/.10,-1,1),
+      tech:clamp((86-s.technology)/25,-1,1),
+      energy:clamp((.78-s.energySecurity)/.35,-1,1),
+      poverty:clamp((.10-s.poverty)/.18,-1,1),
+      inequality:clamp((.34-s.inequality)/.18,-1,1),
+      treasury:clamp((24-s.treasury)/30,-1,1),
+      confidence:clamp((.66-(s.businessConfidence+s.consumerConfidence)/2)/.35,-1,1),
+      housingSupply:s.housingAffordability<.62?1:.25
+    };
+    const scales:Partial<Record<keyof Effects,number>>={growth:.008,inflation:.006,unemployment:.004,debt:.02,approval:.025,bank:.05,fx:.05,credit:.03,tech:1.5,energy:.06,poverty:.015,inequality:.012,treasury:8,confidence:.03,housingSupply:.02,emissions:4,corruption:.03};
+    const weights:Partial<Record<keyof Effects,number>>={growth:1.2,inflation:1.35,unemployment:1.1,debt:1.05,bank:1.2,fx:.9,credit:.75,tech:.75,energy:.65,poverty:.7,inequality:.45,treasury:.45,confidence:.55,approval:.35,housingSupply:.45};
+    const names:Partial<Record<keyof Effects,string>>={growth:'growth',inflation:'inflation',unemployment:'employment',debt:'debt',approval:'approval',bank:'bank stability',fx:'currency',credit:'credit',tech:'productivity',energy:'energy resilience',poverty:'poverty',inequality:'inequality',treasury:'fiscal buffers',confidence:'confidence',housingSupply:'housing supply'};
+    const scored=POLICIES.map(policy=>{
+      let score=0; const contributions:{key:keyof Effects;v:number;label:string}[]=[];
+      for(const [key,value] of Object.entries(policy.effects) as [keyof Effects,number][]){
+        const need=needs[key]??0; const scale=scales[key]??1; const w=weights[key]??.25;
+        const c=(value/scale)*need*w*12; score+=c;
+        if(Math.abs(c)>.4) contributions.push({key,v:c,label:names[key]??String(key)});
+      }
+      const eventMatches=s.activeEvents.filter(e=>e.status==='active'&&e.responsePolicyIds.includes(policy.id));
+      for(const e of eventMatches) score+=22+e.severity*4+(e.stage??1)*2;
+      if(s.activeMission){
+        if(s.activeMission.id==='prices' && (policy.effects.inflation??0)<0) score+=8;
+        if(s.activeMission.id==='jobs' && ((policy.effects.unemployment??0)<0||(policy.effects.growth??0)>0)) score+=8;
+        if(s.activeMission.id==='debt' && (policy.effects.debt??0)<0) score+=8;
+        if(s.activeMission.id==='banks' && (policy.effects.bank??0)>0) score+=8;
+        if(s.activeMission.id==='productivity' && (policy.effects.tech??0)>0) score+=8;
+      }
+      score-=policy.capacityCost*.08+policy.politicalCost*.12;
+      if(!this.canEnact(policy).ok) score-=18;
+      contributions.sort((a,b)=>Math.abs(b.v)-Math.abs(a.v));
+      const best=contributions.filter(x=>x.v>0).slice(0,2);
+      const worst=contributions.filter(x=>x.v<0).sort((a,b)=>a.v-b.v)[0];
+      const event=eventMatches[0];
+      const why=event?`${event.title} is active (stage ${event.stage??1}). ${policy.label} directly matches the response set and also addresses ${best.map(x=>x.label).join(' and ')||'the immediate risk'}.`:
+        best.length?`Current conditions make ${best.map(x=>x.label).join(' and ')} the strongest channels for this instrument.`:`This is a low-urgency option under current macro conditions.`;
+      const watch=worst?`${worst.label}; ${policy.tradeoff}`:policy.tradeoff;
+      const expected=best.length?`Expected support: ${best.map(x=>x.label).join(', ')}.`:'Expected effects are mostly medium-term.';
+      return {policy,score,why,watch,tradeoff:policy.tradeoff,expected,confidence:clamp(52+Math.max(0,score)*1.25,52,94)};
+    }).sort((a,b)=>b.score-a.score);
+    const ready=scored.filter(x=>this.canEnact(x.policy).ok);
+    return (ready.length>=4?ready:scored).slice(0,5).map((x,i)=>({id:`smart-${x.policy.id}-${i}`,why:x.why,watch:x.watch,policy:x.policy,score:x.score,confidence:x.confidence,tradeoff:x.tradeoff,expected:x.expected}));
   }
 
   cabinet(){ return cabinetAdvice(this.state); }

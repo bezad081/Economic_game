@@ -179,3 +179,120 @@ body{background:linear-gradient(180deg,#08131f,#0b1721 38%,#0c1823)}
   .command-header{padding:10px}.header-chip{padding:8px 10px}.command-actions button{height:38px;font-size:11px;padding:0 10px}
   .v10-start-hero h1{font-size:42px}.hero-metrics,.scenario-grid,.setup-row{grid-template-columns:1fr}
 }
+
+/* ==========================
+   V11 dynamic dashboard overrides
+   ========================== */
+.v11-app{min-height:100dvh;display:flex;flex-direction:column;gap:12px;padding:10px 12px 14px;background:
+  radial-gradient(circle at 8% 6%,rgba(69,199,255,.14),transparent 25%),
+  radial-gradient(circle at 90% 12%,rgba(171,147,255,.10),transparent 24%),
+  linear-gradient(180deg,#081420,#0c1824 60%,#0d1925);
+}
+.v11-app .command-header{position:sticky;top:0;z-index:15}
+.v11-app .kpi-board{grid-template-columns:repeat(8,minmax(0,1fr))}
+.v11-layout{display:grid;grid-template-columns:310px minmax(0,1fr) 380px;gap:12px;align-items:start;overflow:visible}
+.macro-navigator,.decision-rail{display:grid;gap:12px;min-width:0}
+.macro-navigator,.decision-rail .panel-shell,.decision-rail .policy-console,.decision-rail .event-desk{border-radius:18px}
+.macro-navigator{padding:14px;background:linear-gradient(180deg,rgba(15,32,47,.95),rgba(10,23,34,.97));border:1px solid rgba(69,199,255,.14);box-shadow:0 16px 40px rgba(0,0,0,.16);position:sticky;top:96px}
+.nav-score{padding:8px 10px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(69,199,255,.08)}
+.nav-score.good{color:#92efbf}.nav-score.warn{color:#ffd977}.nav-score.bad{color:#ff9b8f}
+.macro-dials{display:grid;gap:10px}.macro-dial{padding:12px;border-radius:16px;border:1px solid rgba(69,199,255,.12);background:linear-gradient(180deg,rgba(18,38,56,.95),rgba(12,27,40,.98))}
+.dial-head{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:start}.dial-head .symbol{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:rgba(69,199,255,.08);font-size:14px;color:#a2ebff}.dial-head b{display:block;font-size:13px}.dial-head small{display:block;font-size:11px;color:#88aabd;line-height:1.35;margin-top:3px}.dial-head strong{font-size:16px;white-space:nowrap}
+.dial-bar{margin-top:8px;height:8px;border-radius:999px;background:#102635;overflow:hidden}.dial-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#45c7ff,#35d1bf,#6ee59d)}
+.macro-dial.warn .dial-bar i{background:linear-gradient(90deg,#45c7ff,#ffc75c)}
+.macro-dial.bad .dial-bar i{background:linear-gradient(90deg,#ffc75c,#ff8578)}
+.pulse-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pulse-grid div{padding:10px;border-radius:14px;border:1px solid rgba(69,199,255,.12);background:rgba(11,27,40,.72)}.pulse-grid span{display:block;font-size:10px;color:#8ab0c7;text-transform:uppercase;letter-spacing:.12em}.pulse-grid b{display:block;margin-top:6px;font-size:20px}
+.mini-risk-board{padding:12px;border-radius:16px;border:1px solid rgba(69,199,255,.1);background:linear-gradient(180deg,rgba(16,34,50,.96),rgba(12,25,37,.98))}.mini-risk-board h3{margin:0 0 10px;font-size:14px}.mini-risk{display:grid;grid-template-columns:1fr 88px 34px;gap:8px;align-items:center;padding:6px 0}.mini-risk span{font-size:11px;color:#abc3d3}.mini-risk b{font-size:11px;text-align:right}.mini-risk-track{height:6px;border-radius:999px;background:#112634;overflow:hidden}.mini-risk-track i{display:block;height:100%;background:linear-gradient(90deg,#6ee59d,#ffc75c,#ff8578)}
+.dynamic-note{padding:12px;border-radius:16px;border:1px solid rgba(69,199,255,.1);background:linear-gradient(180deg,rgba(18,41,53,.96),rgba(12,26,37,.98))}.dynamic-note p{margin:6px 0 0;font-size:12px;line-height:1.55;color:#a8c1d1}
+
+.analysis-column{display:grid;gap:12px;min-width:0}
+.analysis-lower-row{display:grid;grid-template-columns:1fr;gap:12px}
+.v11-layout .decision-rail{position:sticky;top:96px}
+.v11-layout .decision-rail .event-desk,.v11-layout .decision-rail .policy-console{max-height:none;overflow:visible;background:linear-gradient(180deg,rgba(15,32,47,.95),rgba(10,23,34,.97));border:1px solid rgba(69,199,255,.14);box-shadow:0 16px 40px rgba(0,0,0,.16)}
+.v11-layout .decision-rail .policy-console .policy-list{max-height:340px}
+.v11-layout .v9-chart-deck{min-height:0}.v11-layout .chart-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.v11-layout .metric-chart-card{min-height:250px}.v11-layout .metric-svg{height:138px}
+.v11-layout .transmission-panel{min-height:330px}.v11-layout .learning-strip{min-height:0}
+
+/* make the page scroll rather than clipping content */
+html,body,#root{min-height:100%;height:auto;overflow:auto}
+body{overflow:auto}
+
+/* slightly brighter components */
+.v11-app .kpi-card{background:linear-gradient(180deg,rgba(18,39,58,.95),rgba(12,28,43,.98));border-color:rgba(77,203,255,.16)}
+.v11-app .metric-chart-card{background:linear-gradient(180deg,rgba(18,39,58,.95),rgba(12,28,43,.98))}
+.v11-app .command-toast{background:rgba(12,27,40,.97)}
+.v11-app .command-footer{position:sticky;bottom:0;z-index:12}
+
+/* start screen tweaks for no-scenario flow */
+.single-row{grid-template-columns:1.1fr .9fr}.start-note.emphasis{border-color:rgba(110,229,157,.18);background:rgba(16,36,41,.72)}
+
+@media(max-width:1500px){
+  .v11-app .kpi-board{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .v11-layout{grid-template-columns:280px minmax(0,1fr) 340px}
+}
+@media(max-width:1180px){
+  .v11-layout{grid-template-columns:1fr}
+  .macro-navigator,.v11-layout .decision-rail{position:static}
+  .analysis-lower-row{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .v11-app .kpi-board{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pulse-grid,.single-row{grid-template-columns:1fr}
+  .v11-layout .chart-grid{grid-template-columns:1fr}
+  .macro-navigator{top:auto}
+}
+
+/* ==========================
+   V12 — dynamic economy, smarter advisor, event chains, animated analytics
+   ========================== */
+.v12-app{min-height:100dvh;display:flex;flex-direction:column;gap:12px;padding:10px 12px 14px;background:
+  radial-gradient(circle at 5% 5%,rgba(67,212,255,.16),transparent 24%),
+  radial-gradient(circle at 92% 8%,rgba(171,147,255,.12),transparent 22%),
+  radial-gradient(circle at 60% 100%,rgba(53,209,191,.08),transparent 30%),
+  linear-gradient(180deg,#081521,#0c1926 55%,#0c1823)}
+.v12-app .command-header{position:sticky;top:0;z-index:18}
+.v12-layout{display:grid;grid-template-columns:310px minmax(0,1fr) 390px;gap:12px;align-items:start;overflow:visible}
+.live-controls{display:flex;align-items:center;gap:5px;padding:5px;border:1px solid rgba(69,199,255,.14);background:rgba(11,27,40,.72);border-radius:12px}
+.live-controls button{height:32px;padding:0 9px;border:1px solid transparent;background:transparent;border-radius:8px;color:#9fc1d3;font-size:11px;font-weight:700;cursor:pointer}
+.live-controls button.active,.live-controls button:hover{background:rgba(69,199,255,.10);border-color:rgba(69,199,255,.20);color:#eafaff}
+.live-controls button:first-child{min-width:74px}.live-controls button:first-child i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#8098a8;margin-right:5px}
+.live-controls button.live-on{color:#b8ffd5;background:rgba(59,203,129,.10);border-color:rgba(110,229,157,.24)}
+.live-controls button.live-on i{background:#6ee59d;box-shadow:0 0 0 0 rgba(110,229,157,.5);animation:livePulse 1.5s infinite}
+@keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(110,229,157,.45)}70%{box-shadow:0 0 0 7px rgba(110,229,157,0)}100%{box-shadow:0 0 0 0 rgba(110,229,157,0)}}
+
+/* Smart advisor */
+.advisor-desk-v12{background:linear-gradient(180deg,rgba(17,36,53,.98),rgba(11,27,40,.98));border:1px solid rgba(69,199,255,.16);border-radius:18px;box-shadow:0 16px 40px rgba(0,0,0,.18)}
+.advisor-risk{max-width:135px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:6px 9px;border-radius:999px;font-size:10px;font-weight:800;background:rgba(69,199,255,.08)}
+.advisor-risk.good{color:#85efb6}.advisor-risk.warn{color:#ffd26d}.advisor-risk.bad{color:#ff9b90}
+.advisor-primary{display:grid;grid-template-columns:34px 1fr auto;gap:10px;padding:13px;border-radius:16px;background:linear-gradient(135deg,rgba(22,72,92,.58),rgba(21,45,67,.75));border:1px solid rgba(87,215,255,.18)}
+.advisor-rank{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,#45c7ff,#35d1bf);color:#04101a;font-weight:900;font-size:11px}
+.advisor-copy>span{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#88b3c8}.advisor-copy h3{font-size:20px;margin:3px 0 6px}.advisor-copy p{font-size:11px;line-height:1.5;color:#b4c8d6;margin:0}.advisor-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 4px}.advisor-meta b{font-size:10px;color:#8ff0bd}.advisor-meta span{font-size:10px;color:#8facbd}.advisor-copy small{font-size:9px;color:#809bad}.advisor-primary>button{align-self:start;border:1px solid #4cc7f3;background:linear-gradient(180deg,#2a9ac7,#1d7596);color:#fff;border-radius:10px;padding:8px 10px;font-size:10px;font-weight:800;cursor:pointer}
+.advisor-list{display:grid;gap:6px;margin-top:8px}.advisor-list article{display:grid;grid-template-columns:26px 1fr 28px;gap:8px;align-items:start;padding:10px;border-radius:13px;border:1px solid rgba(69,199,255,.10);background:rgba(12,28,42,.72)}.advisor-list article>span{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;background:rgba(69,199,255,.08);font-size:9px;color:#8bdcf5}.advisor-list b{font-size:12px}.advisor-list p{font-size:10px;color:#9eb7c7;line-height:1.4;margin:3px 0}.advisor-list small{font-size:9px;color:#7d98aa}.advisor-list button{width:28px;height:28px;border-radius:8px;border:1px solid rgba(69,199,255,.18);background:#12334a;color:#a7eaff;cursor:pointer}
+
+/* Event chains */
+.chain-badge{display:inline-flex;margin:2px 0 8px;padding:4px 7px;border-radius:999px;background:rgba(171,147,255,.12);border:1px solid rgba(171,147,255,.22);color:#cabbff;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.event-consequence{margin:8px 0;padding:9px;border-radius:10px;background:rgba(255,133,120,.07);border:1px solid rgba(255,133,120,.15)}.event-consequence span{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.11em;color:#e9a099}.event-consequence b{display:block;margin-top:4px;font-size:10px;color:#f4c0bb;line-height:1.4}
+.event-card{transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}.event-card:hover{transform:translateY(-1px);border-color:rgba(255,199,92,.28);box-shadow:0 12px 30px rgba(0,0,0,.18)}
+
+/* Professional chart motion */
+.panel-subtitle{display:block;margin-top:4px;color:#7895a8;font-size:9px;letter-spacing:.04em}
+.v12-chart-deck .metric-chart-card{position:relative;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}.v12-chart-deck .metric-chart-card:hover{transform:translateY(-2px);border-color:rgba(69,199,255,.24);box-shadow:0 18px 38px rgba(0,0,0,.20)}
+.metric-line{stroke-dasharray:900;stroke-dashoffset:900;animation:drawLine .72s cubic-bezier(.2,.7,.2,1) forwards}
+.metric-area{animation:fadeArea .72s ease-out forwards}.latest-point{transform-box:fill-box;transform-origin:center;animation:pointPop .55s ease-out,pointGlow 2.2s ease-in-out .55s infinite}.reference-label,.y-label{font-size:8px;fill:#6f8b9d}
+@keyframes drawLine{to{stroke-dashoffset:0}}@keyframes fadeArea{from{opacity:0}to{opacity:1}}@keyframes pointPop{from{transform:scale(.2);opacity:.2}to{transform:scale(1);opacity:1}}@keyframes pointGlow{0%,100%{filter:drop-shadow(0 0 0 transparent)}50%{filter:drop-shadow(0 0 4px currentColor)}}
+.metric-chart-card.trend-good{box-shadow:inset 0 2px 0 rgba(87,225,178,.14)}.metric-chart-card.trend-bad{box-shadow:inset 0 2px 0 rgba(255,133,127,.14)}
+.delta.good{color:#86efb9;background:rgba(87,225,178,.09)}.delta.bad{color:#ffaaa2;background:rgba(255,133,127,.09)}.delta.flat{color:#8aa5b6;background:rgba(111,143,161,.08)}
+
+/* Better right rail / UX */
+.v12-layout .decision-rail{display:grid;gap:12px;position:sticky;top:96px;min-width:0}
+.v12-layout .decision-rail .event-desk,.v12-layout .decision-rail .policy-console{max-height:none;overflow:visible}
+.v12-layout .decision-rail .policy-list{max-height:330px}
+.v12-layout .analysis-column{display:grid;gap:12px;min-width:0}.v12-layout .analysis-lower-row{display:grid;grid-template-columns:1fr;gap:12px}
+.v12-layout .macro-navigator{position:sticky;top:96px}
+.v12-app .command-footer{position:sticky;bottom:0;z-index:14}
+.v12-app .command-toast{animation:toastIn .2s ease-out}@keyframes toastIn{from{transform:translate(-50%,5px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+
+@media(max-width:1540px){.v12-app .kpi-board{grid-template-columns:repeat(4,minmax(0,1fr))}.v12-layout{grid-template-columns:285px minmax(0,1fr) 355px}}
+@media(max-width:1180px){.v12-layout{grid-template-columns:1fr}.v12-layout .macro-navigator,.v12-layout .decision-rail{position:static}.live-controls{order:9}.command-actions{grid-column:1/-1}}
+@media(max-width:760px){.v12-app .kpi-board{grid-template-columns:repeat(2,minmax(0,1fr))}.v12-layout .chart-grid{grid-template-columns:1fr}.live-controls{width:max-content}}

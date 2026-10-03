@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import type { EconomySnapshot } from '../game/types';
 import { pct, pp } from '../game/analytics';
 
-export default function LearningDebrief({econ}:{econ:EconomySnapshot}){
+function LearningDebrief({econ}:{econ:EconomySnapshot}){
   const h=econ.history;const last=h[h.length-1];const prev=h[h.length-2];
   return <section className="learning-strip panel-shell">
     <div className="learning-main"><span className="eyebrow">POLICY DEBRIEF</span><h3>What the economy is teaching you</h3><p>{econ.lastLearningNote}</p></div>
@@ -15,3 +16,5 @@ export default function LearningDebrief({econ}:{econ:EconomySnapshot}){
   </section>
 }
 function Delta({label,value,good}:{label:string;value:string;good:boolean}){return <div className={`learning-delta ${good?'good':'bad'}`}><span>{label}</span><b>{value}</b></div>}
+
+export default memo(LearningDebrief);

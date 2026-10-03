@@ -1,39 +1,24 @@
-# MACROSTATE V9 — Policy Command Dashboard
+# MACROSTATE V12 — Dynamic Policy Command
 
-V9 changes the project from a city visualization into a professional economic-policy command simulation.
+V12 turns the project into a more dynamic economic-policy simulation with a professional dashboard UX.
 
 ## Core loop
 
-**Diagnose → Decide → Advance → Observe → Learn**
+**Diagnose → Decide → Advance → React → Learn**
 
-The player acts as a Chief Economist, Central Bank Governor, Finance Minister, or Planning Minister. The interface combines:
+## What changed in V12
 
-- Separate macroeconomic charts and KPI telemetry
-- Monetary, fiscal, structural, trade, and emergency policy instruments
-- Policy-transmission visualization
-- Inflation, growth, fiscal and financial driver decomposition
-- Endogenous policy events with deadlines and policy-response matching
-- Guided campaigns and open sandbox play
-- Quarter-by-quarter learning/debrief notes
-- Banking, firms, households, elections, public approval and policy capacity
+- Dynamic Live mode with 1× / 2× speed and automatic pause on critical events
+- Smarter policy advisor that scores instruments against current macro needs, active events, mission goals, policy capacity and trade-offs
+- Multi-stage event chains: unresolved shocks can propagate into follow-up banking, inflation, currency, debt or real-economy crises
+- Endogenous event generation from the state of the economy rather than pre-selected starting scenarios
+- More animated and polished analytical charts with reference lines, animated redraws, trend feedback and longer history
+- Left-side Core Systems monitor and right-side Advisor / Risk / Policy rail
+- UX and rendering optimization through memoized analytical components and CSS-native animations
 
-## V9 economic depth
-
-The simulation now explicitly tracks core inflation, wage growth, the output gap, real wages, policy credibility, sovereign spreads, FX reserves and the current account in addition to the existing macro-financial system.
-
-The event engine can generate currency, banking, energy, global demand, housing, wage, sovereign-debt and technology events. Events create macroeconomic effects and identify policy responses that can contain them before escalation.
-
-## Web deployment
-
-The project is React + TypeScript + Vite and works with the existing GitHub Pages workflow used by the previous native-web versions.
+The project remains React + TypeScript + Vite and can be deployed with the existing GitHub Pages workflow.
 
 ```bash
 npm install
-npm run dev
-```
-
-Production build:
-
-```bash
 npm run build
 ```

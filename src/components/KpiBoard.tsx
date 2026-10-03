@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import type { EconomySnapshot } from '../game/types';
 import { metricTone, pct } from '../game/analytics';
 
-export default function KpiBoard({econ}:{econ:EconomySnapshot}){
+function KpiBoard({econ}:{econ:EconomySnapshot}){
   const items=[
     {k:'growth',label:'GDP growth',v:pct(econ.growth),sub:`Gap ${pct(econ.outputGap)}`},
     {k:'inflation',label:'Inflation',v:pct(econ.inflation),sub:`Core ${pct(econ.coreInflation)}`},
@@ -14,3 +15,5 @@ export default function KpiBoard({econ}:{econ:EconomySnapshot}){
   ];
   return <section className="kpi-board">{items.map(x=><article key={x.label} className={`kpi-card ${metricTone(x.k,econ)}`}><span>{x.label}</span><strong>{x.v}</strong><small>{x.sub}</small></article>)}</section>
 }
+
+export default memo(KpiBoard);

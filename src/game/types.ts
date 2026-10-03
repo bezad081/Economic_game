@@ -87,7 +87,12 @@ export interface MacroEvent {
   learning: string;
   status: 'active'|'responded'|'expired';
   resolvedBy?: string;
+  chainId?: string;
+  parentEventId?: string;
+  stage?: number;
+  consequence?: string;
 }
+
 
 export interface NewsItem {
   id: string;
@@ -123,6 +128,10 @@ export interface AdvisorRecommendation {
   why: string;
   watch: string;
   policy: PolicySpec;
+  score?: number;
+  confidence?: number;
+  tradeoff?: string;
+  expected?: string;
 }
 
 export interface Mission {
