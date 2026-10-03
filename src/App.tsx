@@ -10,11 +10,8 @@ import { EconomyEngine } from './game/economy';
 import { POLICIES } from './game/policies';
 import type { EconomySnapshot, GameMode, PolicySpec, Tab } from './game/types';
 
-const SAVE_KEY='macrostate-policy-command-v9';
-const START_KEY='macrostate-policy-command-v9-started';
-const ROLE_KEY='macrostate-policy-command-v9-role';
-
-type Role=V9Setup['role'];
+const SAVE_KEY='macrostate-policy-command-v10';
+const START_KEY='macrostate-policy-command-v10-started';
 
 function loadSaved():EconomySnapshot|undefined{try{const raw=localStorage.getItem(SAVE_KEY);return raw?JSON.parse(raw):undefined}catch{return undefined}}
 
@@ -24,19 +21,18 @@ export default function App(){
   if(!engineRef.current)engineRef.current=new EconomyEngine(initialSaved?.mode??'sandbox',initialSaved);
   const [econ,setEcon]=useState(()=>engineRef.current!.snapshot());
   const [started,setStarted]=useState(()=>localStorage.getItem(START_KEY)==='yes');
-  const [role,setRole]=useState<Role>(()=>(localStorage.getItem(ROLE_KEY) as Role)||'Chief Economist');
   const [tab,setTab]=useState<Tab>('Advisor');
   const [lastPolicy,setLastPolicy]=useState<PolicySpec|null>(null);
   const [newsOpen,setNewsOpen]=useState(false);
-  const [toast,setToast]=useState('Read the regime, risks and charts. Make one decision, then advance one quarter.');
+  const [difficulty,setDifficulty]=useState<V9Setup['difficulty']>('Learning');
+  const [toast,setToast]=useState('Diagnose the economy, choose one instrument, advance one quarter, then read the outcome.');
 
   const sync=()=>{const s=engineRef.current!.snapshot();setEcon(s);localStorage.setItem(SAVE_KEY,JSON.stringify(s))};
   const recommendations=useMemo(()=>engineRef.current!.advisor(),[econ]);
 
   const enact=(p:PolicySpec)=>{
     const result=engineRef.current!.enact(p.id);
-    if(result.ok){setLastPolicy(p);setToast(`${p.label} enacted. Transmission will unfold over ${p.duration} quarters.`);}
-    else setToast(result.reason);
+    if(result.ok){setLastPolicy(p);setToast(`${p.label} enacted. Transmission unfolds over ${p.duration} quarters.`);} else setToast(result.reason);
     sync();
   };
 
@@ -51,12 +47,12 @@ export default function App(){
   const startGame=(mode:GameMode,setup:V9Setup)=>{
     engineRef.current=new EconomyEngine(mode);
     applySetup(engineRef.current.state,setup);
-    setRole(setup.role);localStorage.setItem(ROLE_KEY,setup.role);
-    setTab(roleTab(setup.role));
+    setDifficulty(setup.difficulty);
+    setTab('Advisor');
     setLastPolicy(null);
     setStarted(true);localStorage.setItem(START_KEY,'yes');
     sync();
-    setToast(mode==='mission'?'Mandate active. Stabilize the economy without sacrificing the rest of the system.':'Sandbox active. Test policies and shocks freely.');
+    setToast(mode==='mission'?'Guided campaign active. Stabilize the economy while building long-run capacity.':'Sandbox active. Experiment with policies and shocks freely.');
   };
 
   const continueGame=()=>{setStarted(true);localStorage.setItem(START_KEY,'yes')};
@@ -65,13 +61,15 @@ export default function App(){
 
   if(!started)return <StartScreenV9 hasSave={!!initialSaved} econ={econ} onContinue={continueGame} onStart={startGame}/>;
 
-  return <div className="v9-app">
+  return <div className="v10-app">
     <header className="command-header">
-      <div className="command-brand"><div className="command-logo">M</div><div><strong>MACROSTATE</strong><small>POLICY COMMAND • V9</small></div></div>
-      <div className="command-period"><span>Q{econ.quarter} {econ.year}</span><b>{econ.regime}</b></div>
-      <div className="command-role"><span>Role</span><b>{role}</b></div>
-      <div className="command-score"><span>National score</span><b>{econ.nationalScore.toFixed(0)}</b></div>
-      <div className="command-actions"><button onClick={()=>setTab('Advisor')}>Advisor</button><button onClick={()=>setNewsOpen(v=>!v)}>Wire <i>{econ.news.length}</i></button><button className="reset-button" onClick={reset}>New mandate</button><button className="advance-button" onClick={advance}>Advance quarter →</button></div>
+      <div className="command-brand"><div className="command-logo">M</div><div><strong>MACROSTATE</strong><small>POLICY COMMAND • V10</small></div></div>
+      <div className="header-chip"><span>Quarter</span><b>Q{econ.quarter} {econ.year}</b></div>
+      <div className="header-chip"><span>Regime</span><b>{econ.regime}</b></div>
+      <div className="header-chip"><span>Mode</span><b>{econ.mode==='mission'?'Campaign':'Sandbox'}</b></div>
+      <div className="header-chip hide-mobile"><span>Difficulty</span><b>{difficulty}</b></div>
+      <div className="header-chip highlight"><span>National score</span><b>{econ.nationalScore.toFixed(0)}</b></div>
+      <div className="command-actions"><button onClick={()=>setTab('Advisor')}>Advisor</button><button onClick={()=>setNewsOpen(v=>!v)}>Wire <i>{econ.news.length}</i></button><button className="reset-button" onClick={reset}>New simulation</button><button className="advance-button" onClick={advance}>Advance quarter →</button></div>
     </header>
 
     <KpiBoard econ={econ}/>
@@ -80,8 +78,10 @@ export default function App(){
       <PolicyConsoleV9 econ={econ} tab={tab} setTab={setTab} onPolicy={enact} recommendations={recommendations}/>
       <section className="analysis-column">
         <ChartDeck econ={econ}/>
-        <TransmissionMap econ={econ} lastPolicy={activeImpulse}/>
-        <LearningDebrief econ={econ}/>
+        <div className="analysis-lower-row">
+          <TransmissionMap econ={econ} lastPolicy={activeImpulse}/>
+          <LearningDebrief econ={econ}/>
+        </div>
       </section>
       <EventDesk econ={econ} recommendations={recommendations}/>
     </main>
@@ -92,8 +92,6 @@ export default function App(){
     <div className="command-toast">{toast}</div>
   </div>;
 }
-
-function roleTab(role:Role):Tab{return role==='Central Bank Governor'?'Monetary':role==='Finance Minister'?'Fiscal':role==='Planning Minister'?'Structural':'Advisor'}
 
 function findLastPolicy(text:string){return POLICIES.find(p=>text.startsWith(p.label))??null}
 
