@@ -74,6 +74,21 @@ export interface ActiveImpulse {
   effects: Effects;
 }
 
+export interface MacroEvent {
+  id: string;
+  kind: 'currency'|'banking'|'energy'|'global'|'housing'|'wages'|'debt'|'technology';
+  title: string;
+  description: string;
+  severity: 1|2|3|4|5;
+  startedTurn: number;
+  deadlineTurn: number;
+  responsePolicyIds: string[];
+  responseLabel: string;
+  learning: string;
+  status: 'active'|'responded'|'expired';
+  resolvedBy?: string;
+}
+
 export interface NewsItem {
   id: string;
   period: string;
@@ -86,7 +101,9 @@ export interface HistoryPoint {
   gdp: number;
   growth: number;
   inflation: number;
+  coreInflation?: number;
   unemployment: number;
+  wageGrowth?: number;
   debt: number;
   approval: number;
   fci: number;
@@ -94,6 +111,9 @@ export interface HistoryPoint {
   housingAffordability: number;
   bankHealth: number;
   macroRisk: number;
+  exchangeRate?: number;
+  outputGap?: number;
+  sovereignSpread?: number;
   incumbentShare: number;
   turnout: number;
 }
@@ -123,13 +143,21 @@ export interface EconomySnapshot {
   potentialGDP: number;
   growth: number;
   inflation: number;
+  coreInflation: number;
   inflationExpected: number;
+  wageGrowth: number;
+  realWageGrowth: number;
   unemployment: number;
+  outputGap: number;
   policyRate: number;
   realRate: number;
+  credibility: number;
   debtRatio: number;
   primaryBalance: number;
+  sovereignSpread: number;
   treasury: number;
+  fxReserves: number;
+  currentAccount: number;
   approval: number;
   politicalCapital: number;
   policyCapacity: number;
@@ -156,12 +184,15 @@ export interface EconomySnapshot {
   missionScore: number;
   missionsCompleted: number;
   activeMission: Mission | null;
+  activeEvents: MacroEvent[];
+  eventHistory: MacroEvent[];
   impulses: ActiveImpulse[];
   cooldowns: Record<string, number>;
   news: NewsItem[];
   history: HistoryPoint[];
   lastPolicy: string;
   lastQuarterSummary: string;
+  lastLearningNote: string;
   firms: FirmState[];
   households: HouseholdCohort[];
   election: ElectionState;
@@ -170,4 +201,3 @@ export interface EconomySnapshot {
   totalEmployment: number;
   averageWage: number;
 }
-

@@ -1,5 +1,5 @@
 import { POLICIES, policyById } from './policies';
-import type { ActiveImpulse, AdvisorRecommendation, EconomySnapshot, Effects, GameMode, HistoryPoint, Mission, NewsItem, PolicySpec } from './types';
+import type { ActiveImpulse, AdvisorRecommendation, EconomySnapshot, Effects, GameMode, HistoryPoint, MacroEvent, Mission, NewsItem, PolicySpec } from './types';
 import { cabinetAdvice, seedFirms, seedHouseholds, updateElection, updateMicroeconomy } from './micro';
 
 const clamp = (x:number, lo:number, hi:number) => Math.max(lo, Math.min(hi, x));
@@ -15,9 +15,9 @@ class RNG {
 const initial = (mode:GameMode):EconomySnapshot => ({
   year:2027, quarter:1, turn:0, mode,
   realGDP:1018, potentialGDP:1000, growth:.028,
-  inflation:.034, inflationExpected:.032, unemployment:.055,
-  policyRate:.045, realRate:.013,
-  debtRatio:.525, primaryBalance:-.018, treasury:28,
+  inflation:.034, coreInflation:.031, inflationExpected:.032, wageGrowth:.038, realWageGrowth:.004, unemployment:.055, outputGap:.018,
+  policyRate:.045, realRate:.013, credibility:.74,
+  debtRatio:.525, primaryBalance:-.018, sovereignSpread:.012, treasury:28, fxReserves:36, currentAccount:.010,
   approval:.56, politicalCapital:72, policyCapacity:100,
   bankHealth:.79, creditGrowth:.038, exchangeRate:1.0,
   housingIndex:100, housingAffordability:.72,
@@ -27,8 +27,8 @@ const initial = (mode:GameMode):EconomySnapshot => ({
   exports:115, imports:105,
   fci:50, macroRisk:10, regime:'Balanced Expansion', nationalScore:62,
   missionScore:0, missionsCompleted:0,
-  activeMission:null, impulses:[], cooldowns:{}, news:[], history:[],
-  lastPolicy:'No policy enacted yet.', lastQuarterSummary:'Economy initialized.',
+  activeMission:null, activeEvents:[], eventHistory:[], impulses:[], cooldowns:{}, news:[], history:[],
+  lastPolicy:'No policy enacted yet.', lastQuarterSummary:'Economy initialized.', lastLearningNote:'Start by reading the regime, risks and policy transmission map.',
   firms:seedFirms(), households:seedHouseholds(),
   election:{lastElectionTurn:0,nextElectionTurn:16,incumbentShare:.54,oppositionShare:.46,turnout:.68,campaignActive:false,lastResult:'No election held yet'},
   bankruptcies:0, firmBirths:0, totalEmployment:0, averageWage:1.0
@@ -45,6 +45,8 @@ export class EconomyEngine {
     if(!this.state.households) this.state.households=seedHouseholds();
     if(!this.state.election) this.state.election={lastElectionTurn:0,nextElectionTurn:16,incumbentShare:.54,oppositionShare:.46,turnout:.68,campaignActive:false,lastResult:'No election held yet'};
     this.state.bankruptcies ??= 0; this.state.firmBirths ??= 0; this.state.totalEmployment ??= 0; this.state.averageWage ??= 1;
+    this.state.coreInflation ??= this.state.inflation*.9; this.state.wageGrowth ??= this.state.inflationExpected+.006; this.state.realWageGrowth ??= this.state.wageGrowth-this.state.inflation; this.state.outputGap ??= this.state.realGDP/this.state.potentialGDP-1;
+    this.state.credibility ??= .72; this.state.sovereignSpread ??= .012; this.state.fxReserves ??= 36; this.state.currentAccount ??= (this.state.exports-this.state.imports)/Math.max(1,this.state.realGDP); this.state.activeEvents ??= []; this.state.eventHistory ??= []; this.state.lastLearningNote ??= 'Read the macro regime before choosing a policy.';
     if(this.state.totalEmployment<=0){ this.state.totalEmployment=this.state.firms.reduce((a,f)=>a+f.employees,0); this.state.averageWage=this.state.firms.reduce((a,f)=>a+f.employees*f.wage,0)/Math.max(1,this.state.totalEmployment); }
     this.rng = new RNG(20271001 + this.state.turn*97);
     if (!this.state.activeMission && mode === 'mission') this.state.activeMission = this.chooseMission();
@@ -82,6 +84,9 @@ export class EconomyEngine {
     this.state.impulses.push(impulse);
     if (id === 'rate_up') this.state.policyRate = clamp(this.state.policyRate + .005, -.01, .25);
     if (id === 'rate_down') this.state.policyRate = clamp(this.state.policyRate - .005, -.01, .25);
+    if (id === 'support_fx') this.state.fxReserves = clamp(this.state.fxReserves-4, 0, 80);
+    const matched=this.state.activeEvents.find(e=>e.status==='active'&&e.responsePolicyIds.includes(id));
+    if(matched){matched.status='responded';matched.resolvedBy=policy.label;this.state.politicalCapital=clamp(this.state.politicalCapital+3,0,100);this.pushNews(`Policy response matched the ${matched.title} event.`, 'good');}
     this.state.lastPolicy = `${policy.label}: ${policy.description}`;
     this.pushNews(`Cabinet enacted ${policy.label}. Effects will transmit over ${policy.duration} quarters.`, 'neutral');
     return {ok:true, reason:'Enacted'};
@@ -125,7 +130,10 @@ export class EconomyEngine {
       if(next<=0) delete s.cooldowns[k]; else s.cooldowns[k]=next;
     }
 
-    s.inflationExpected = clamp(.72*s.inflationExpected + .28*s.inflation, -.03,.25);
+    const anchor=.025;
+    s.credibility=clamp(s.credibility + .035*(1-Math.abs(s.inflation-anchor)/.08) - .025*Math.max(0,s.inflationExpected-.05) + noise()*.003,.15,.98);
+    const expectationMemory=.62+.22*(1-s.credibility);
+    s.inflationExpected = clamp(expectationMemory*s.inflationExpected + (1-expectationMemory)*s.inflation + .08*s.credibility*(anchor-s.inflationExpected), -.03,.25);
     s.realRate = s.policyRate - s.inflationExpected;
 
     s.technology = clamp(s.technology + (imp.tech??0) + .12 + noise()*.07, 35, 130);
@@ -138,6 +146,7 @@ export class EconomyEngine {
     s.consumerConfidence = clamp(.65*s.consumerConfidence + .35*(.72 - 1.8*Math.max(0,s.inflation-.025) - 1.2*Math.max(0,s.unemployment-.05) + .3*s.approval), .12,.95);
 
     const outputGap=(s.realGDP/s.potentialGDP)-1;
+    s.outputGap=outputGap;
     const qGrowth = clamp(
       .0056 + (imp.growth??0) + .012*(s.businessConfidence-.62) + .009*(s.consumerConfidence-.62)
       + .035*(s.creditGrowth-.03) - .075*Math.max(-.02,s.realRate-.012) - .045*Math.max(0,outputGap-.04)
@@ -148,18 +157,21 @@ export class EconomyEngine {
     s.growth = clamp(qGrowth*4, -.20,.30);
 
     const newGap=(s.realGDP/s.potentialGDP)-1;
-    s.inflation = clamp(
-      .74*s.inflation + .18*s.inflationExpected + .08*.025 + .038*newGap + (imp.inflation??0) + noise()*.0015,
-      -.035,.30
-    );
+    s.outputGap=newGap;
+    const importedInflation=.018*Math.max(-.15,s.exchangeRate-1)+.012*Math.max(0,.7-s.energySecurity);
+    s.coreInflation = clamp(.70*s.coreInflation + .18*s.inflationExpected + .12*.025 + .034*newGap + .010*Math.max(0,s.wageGrowth-.04) + (imp.inflation??0)*.72 + noise()*.0011,-.03,.25);
+    s.inflation = clamp(.76*s.coreInflation + .24*(s.coreInflation+importedInflation) + (imp.inflation??0)*.28 + noise()*.0009,-.035,.30);
     s.unemployment = clamp(s.unemployment - .24*qGrowth + .08*(.052-s.unemployment) + (imp.unemployment??0) + noise()*.0012, .018,.28);
+    s.wageGrowth=clamp(.58*s.wageGrowth+.25*s.inflationExpected+.17*(.025+s.productivity*.004)+.16*Math.max(0,.055-s.unemployment)+noise()*.0015,-.03,.20);
+    s.realWageGrowth=clamp(s.wageGrowth-s.inflation,-.15,.15);
 
     s.bankHealth = clamp(s.bankHealth + .030*qGrowth - .12*Math.max(0,s.unemployment-.08) - .055*Math.max(0,s.policyRate-.10) + (imp.bank??0) + noise()*.006, .08,1);
     s.exchangeRate = clamp(s.exchangeRate * (1 + .055*(s.inflation-.025) - .035*(s.policyRate-.04) + .025*(.65-s.bankHealth) + (imp.fx??0) + noise()*.004), .45,2.7);
 
     s.primaryBalance = clamp(-.018 + .10*(s.debtRatio-.60) - .06*(s.growth-.02), -.12,.10);
     s.treasury += (imp.treasury??0) - s.primaryBalance*10 + noise()*.4;
-    const rq=Math.max(-.01,s.policyRate)/4;
+    s.sovereignSpread=clamp(.004+.035*Math.max(0,s.debtRatio-.65)+.025*Math.max(0,-s.primaryBalance-.03)+.020*(1-s.credibility)+.016*Math.max(0,.65-s.bankHealth),.002,.16);
+    const rq=Math.max(-.01,s.policyRate+s.sovereignSpread)/4;
     s.debtRatio = clamp(((1+rq)/(1+qGrowth))*s.debtRatio - s.primaryBalance/4 + (imp.debt??0), .08,2.4);
 
     const housingDemand=.010 + .05*(s.creditGrowth-.03) - .035*(s.policyRate-.04) + .02*(s.growth-.02);
@@ -174,6 +186,8 @@ export class EconomyEngine {
 
     s.exports = clamp(s.exports * (1 + .45*qGrowth + .016*(1-s.exchangeRate) + .003*(s.technology-70)/10 + noise()*.003), 45,300);
     s.imports = clamp(s.imports * (1 + .50*qGrowth - .020*(s.exchangeRate-1) + noise()*.003), 35,320);
+    s.currentAccount=clamp((s.exports-s.imports)/Math.max(1,s.realGDP),-.20,.20);
+    s.fxReserves=clamp(s.fxReserves + Math.max(-2.5,Math.min(2.5,s.currentAccount*8)) + noise()*.35,0,80);
 
     s.approval = clamp(
       .78*s.approval + .22*(.68 + 1.6*(s.growth-.02) - 2.2*Math.max(0,s.inflation-.03) - 1.8*Math.max(0,s.unemployment-.055)
@@ -181,7 +195,7 @@ export class EconomyEngine {
       .08,.92
     );
 
-    s.fci = clamp(50 + 180*(s.policyRate-.04) - 22*(s.creditGrowth-.03) + 18*(1-s.bankHealth) + 7*(s.exchangeRate-1), 0,100);
+    s.fci = clamp(50 + 150*(s.policyRate-.04) + 75*s.sovereignSpread - 22*(s.creditGrowth-.03) + 18*(1-s.bankHealth) + 7*(s.exchangeRate-1), 0,100);
     s.macroRisk = clamp(100*(.24*Math.max(0,s.inflation-.04)/.12 + .18*Math.max(0,s.unemployment-.07)/.15 + .20*Math.max(0,s.debtRatio-.75)/1.2 + .22*(1-s.bankHealth) + .16*Math.max(0,s.exchangeRate-1)/1.2),0,100);
     s.regime=this.classifyRegime();
     s.nationalScore=this.score();
@@ -190,6 +204,8 @@ export class EconomyEngine {
     s.quarter += 1;
     if(s.quarter>4){ s.quarter=1; s.year += 1; }
 
+    this.updateEvents();
+    this.maybeGenerateEvent();
     updateMicroeconomy(s,()=>this.rng.next());
     updateElection(s,()=>this.rng.next());
     if(s.bankruptcies>0) this.pushNews(`${s.bankruptcies} firm${s.bankruptcies===1?'':'s'} entered restructuring this quarter.`, 'bad');
@@ -200,7 +216,74 @@ export class EconomyEngine {
     this.randomDevelopment();
     this.recordHistory();
     s.lastQuarterSummary = `${periodLabel(s.year,s.quarter)} • GDP ${s.growth>=0?'+':''}${(s.growth*100).toFixed(1)}% • inflation ${(s.inflation*100).toFixed(1)}% • unemployment ${(s.unemployment*100).toFixed(1)}% • debt ${(s.debtRatio*100).toFixed(1)}%.`;
+    s.lastLearningNote=this.learningNote(before);
     this.pushNews(`Quarter closed: ΔGDP ${(s.realGDP-before.gdp).toFixed(1)}, inflation ${((s.inflation-before.inflation)*100).toFixed(1)}pp, unemployment ${((s.unemployment-before.u)*100).toFixed(1)}pp.`, s.growth>=0?'good':'bad');
+  }
+
+  private updateEvents(){
+    const s=this.state;
+    for(const e of s.activeEvents){
+      if(e.status==='responded' && s.turn>e.startedTurn){e.status='expired';this.pushNews(`Event contained: ${e.title}. Response: ${e.resolvedBy}.`,'good');continue;}
+      if(e.status==='active' && s.turn>e.deadlineTurn){
+        e.status='expired';
+        const penalty=this.eventPenalty(e.kind,e.severity);
+        s.impulses.push({id:`event-penalty-${e.id}`,label:`Escalation: ${e.title}`,age:0,duration:3,effects:penalty});
+        s.approval=clamp(s.approval-.008*e.severity,.08,.92);
+        this.pushNews(`Unresolved event escalated: ${e.title}.`,'bad');
+      }
+    }
+    const finished=s.activeEvents.filter(e=>e.status==='expired');
+    if(finished.length){s.eventHistory.unshift(...finished);s.eventHistory=s.eventHistory.slice(0,16);}
+    s.activeEvents=s.activeEvents.filter(e=>e.status!=='expired');
+  }
+
+  private eventPenalty(kind:MacroEvent['kind'],severity:number):Effects{
+    const m=Math.max(1,severity)/3;
+    const map:Record<MacroEvent['kind'],Effects>={
+      currency:{fx:.045*m,inflation:.006*m,confidence:-.025*m,treasury:-2*m},
+      banking:{bank:-.06*m,credit:-.03*m,growth:-.004*m,confidence:-.03*m},
+      energy:{energy:-.045*m,inflation:.007*m,growth:-.003*m,approval:-.01*m},
+      global:{growth:-.006*m,unemployment:.003*m,confidence:-.025*m},
+      housing:{growth:-.003*m,bank:-.018*m,confidence:-.018*m},
+      wages:{inflation:.006*m,confidence:-.008*m},
+      debt:{debt:.012*m,growth:-.003*m,confidence:-.028*m},
+      technology:{tech:-.5*m,growth:-.001*m}
+    };return map[kind];
+  }
+
+  private maybeGenerateEvent(){
+    const s=this.state;
+    if(s.activeEvents.length>=2) return;
+    const riskChance=.07+.0010*s.macroRisk+(s.mode==='mission'?.025:0);
+    if(this.rng.next()>riskChance) return;
+    const candidates:{kind:MacroEvent['kind'];weight:number;title:string;description:string;severity:number;response:string[];label:string;learning:string;effects:Effects}[]=[
+      {kind:'currency',weight:.7+Math.max(0,s.exchangeRate-1)*3+Math.max(0,s.inflation-.05)*5,title:'Currency pressure wave',description:'FX demand is rising and imported inflation risk is building.',severity:s.exchangeRate>1.22?4:3,response:['support_fx','rate_up','imf_bailout'],label:'Stabilize FX expectations',learning:'Currency stress links inflation credibility, reserves and interest-rate policy.',effects:{fx:.025,inflation:.003,confidence:-.012}},
+      {kind:'banking',weight:.55+Math.max(0,.72-s.bankHealth)*4,title:'Bank funding squeeze',description:'Wholesale funding costs are rising and credit transmission is weakening.',severity:s.bankHealth<.55?5:3,response:['bank_recap','qe','macroprudential'],label:'Restore financial transmission',learning:'Weak banks can block monetary transmission even when policy rates fall.',effects:{bank:-.035,credit:-.02,confidence:-.02}},
+      {kind:'energy',weight:.45+Math.max(0,.72-s.energySecurity)*2,title:'Energy supply disruption',description:'Energy costs are threatening production and headline inflation.',severity:s.energySecurity<.55?4:2,response:['energy_subsidy','infra_up','port_upgrade'],label:'Protect supply and households',learning:'Supply shocks create a difficult inflation–growth trade-off.',effects:{energy:-.035,inflation:.005,growth:-.002}},
+      {kind:'global',weight:.5,title:'Global demand slowdown',description:'Export orders are weakening as external growth cools.',severity:2,response:['export_support','fdi_incentives','stimulus'],label:'Support demand without destabilizing prices',learning:'Open economies transmit foreign demand through exports, confidence and investment.',effects:{growth:-.003,confidence:-.018}},
+      {kind:'housing',weight:.35+Math.max(0,s.housingIndex-120)/80,title:'Housing correction risk',description:'Housing valuations and financing conditions are diverging.',severity:s.housingIndex>150?4:2,response:['housing_support','macroprudential','rate_down'],label:'Manage housing and credit risk',learning:'Housing connects rates, bank balance sheets, household wealth and construction.',effects:{confidence:-.012,bank:-.012}},
+      {kind:'wages',weight:.35+Math.max(0,.05-s.unemployment)*8,title:'Wage-price pressure',description:'Labor-market tightness is lifting wage settlements and core inflation.',severity:s.wageGrowth>.07?4:2,response:['rate_up','education_up','business_reform'],label:'Anchor inflation without crushing jobs',learning:'Tight labor markets can sustain core inflation through wage persistence.',effects:{inflation:.004}},
+      {kind:'debt',weight:.3+Math.max(0,s.debtRatio-.75)*2,title:'Sovereign funding stress',description:'Bond investors demand a higher premium for fiscal risk.',severity:s.debtRatio>1?5:3,response:['austerity','income_tax_up','imf_bailout'],label:'Rebuild fiscal credibility',learning:'Debt dynamics depend on growth, primary balances and effective interest costs.',effects:{debt:.008,confidence:-.02}},
+      {kind:'technology',weight:.25,title:'Technology investment window',description:'A private investment wave creates an opportunity to lift potential output.',severity:1,response:['research_grant','education_up','business_reform'],label:'Capture the productivity opportunity',learning:'Structural policy works slowly but can raise non-inflationary growth capacity.',effects:{tech:.5,growth:.001,confidence:.012}}
+    ];
+    const total=candidates.reduce((a,c)=>a+c.weight,0);let r=this.rng.next()*total;let c=candidates[0];for(const x of candidates){r-=x.weight;if(r<=0){c=x;break;}}
+    const sev=clamp(Math.round(c.severity+this.rng.range(-.5,.5)),1,5) as MacroEvent['severity'];
+    const id=`evt-${c.kind}-${s.turn}-${Math.floor(this.rng.next()*9999)}`;
+    const event:MacroEvent={id,kind:c.kind,title:c.title,description:c.description,severity:sev,startedTurn:s.turn,deadlineTurn:s.turn+(sev>=4?2:3),responsePolicyIds:c.response,responseLabel:c.label,learning:c.learning,status:'active'};
+    s.activeEvents.push(event);
+    s.impulses.push({id:`event-${id}`,label:c.title,age:0,duration:3,effects:c.effects});
+    this.pushNews(`Policy alert: ${c.title}.`,'bad');
+  }
+
+  private learningNote(before:{gdp:number;inflation:number;u:number;debt:number;approval:number}){
+    const s=this.state;const dPi=s.inflation-before.inflation,dU=s.unemployment-before.u,dY=s.realGDP-before.gdp;
+    if(dPi<-.002&&dU>.001)return 'Inflation eased, but unemployment rose: the classic short-run stabilization trade-off is visible.';
+    if(dY>0&&dPi>.002)return 'Demand strengthened output, but price pressure also rose. Check the output gap before adding more stimulus.';
+    if(s.bankHealth<.6)return 'Financial transmission is impaired: bank health can dominate the effect of ordinary rate changes.';
+    if(s.debtRatio>before.debt+.005)return 'Debt rose this quarter. Compare the primary balance with growth and sovereign funding costs.';
+    if(s.outputGap>.04)return 'The economy is operating above estimated capacity, increasing the risk of persistent inflation.';
+    if(s.outputGap<-.04)return 'A negative output gap is opening. Demand support may help, provided inflation expectations remain anchored.';
+    return 'The economy moved gradually this quarter. Use the driver panels to separate demand, supply and financial effects.';
   }
 
   private randomDevelopment(){
@@ -273,9 +356,9 @@ export class EconomyEngine {
   private recordHistory(){
     const s=this.state;
     const h:HistoryPoint={
-      period:periodLabel(s.year,s.quarter),gdp:s.realGDP,growth:s.growth,inflation:s.inflation,unemployment:s.unemployment,
+      period:periodLabel(s.year,s.quarter),gdp:s.realGDP,growth:s.growth,inflation:s.inflation,coreInflation:s.coreInflation,unemployment:s.unemployment,wageGrowth:s.wageGrowth,
       debt:s.debtRatio,approval:s.approval,fci:s.fci,poverty:s.poverty,housingAffordability:s.housingAffordability,
-      bankHealth:s.bankHealth,macroRisk:s.macroRisk,incumbentShare:s.election?.incumbentShare??.5,turnout:s.election?.turnout??.65
+      bankHealth:s.bankHealth,macroRisk:s.macroRisk,exchangeRate:s.exchangeRate,outputGap:s.outputGap,sovereignSpread:s.sovereignSpread,incumbentShare:s.election?.incumbentShare??.5,turnout:s.election?.turnout??.65
     };
     s.history.push(h); if(s.history.length>48) s.history.shift();
   }

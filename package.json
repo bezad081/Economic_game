@@ -1,7 +1,7 @@
 {
-  "name": "macrostate-living-city-web",
+  "name": "macrostate-policy-command-v9",
   "private": true,
-  "version": "8.0.0",
+  "version": "9.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,135 +1,108 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import LivingCity, { type CityView } from './components/LivingCity';
-import QuarterPulse from './components/QuarterPulse';
-import OnboardingModal from './components/OnboardingModal';
-import PolicyPanel from './components/PolicyPanel';
-import ReportModal from './components/ReportModal';
-import SystemsModal from './components/SystemsModal';
-import TrendPanel from './components/TrendPanel';
-import StartScreen, { type StartSetup } from './components/StartScreen';
+import { useMemo, useRef, useState } from 'react';
+import ChartDeck from './components/ChartDeck';
+import EventDesk from './components/EventDesk';
+import KpiBoard from './components/KpiBoard';
+import LearningDebrief from './components/LearningDebrief';
+import PolicyConsoleV9 from './components/PolicyConsoleV9';
+import StartScreenV9, { type V9Setup } from './components/StartScreenV9';
+import TransmissionMap from './components/TransmissionMap';
 import { EconomyEngine } from './game/economy';
+import { POLICIES } from './game/policies';
 import type { EconomySnapshot, GameMode, PolicySpec, Tab } from './game/types';
 
-const KEY='macrostate-native-save-v8';
-const GUIDE_KEY='macrostate-guide-v8';
-const SIMPLE_KEY='macrostate-simple-v8';
-const START_KEY='macrostate-started-v8';
-const pct=(x:number,d=1)=>`${(x*100).toFixed(d)}%`;
+const SAVE_KEY='macrostate-policy-command-v9';
+const START_KEY='macrostate-policy-command-v9-started';
+const ROLE_KEY='macrostate-policy-command-v9-role';
 
-function loadSaved():EconomySnapshot|undefined { try{const raw=localStorage.getItem(KEY);return raw?JSON.parse(raw):undefined}catch{return undefined} }
+type Role=V9Setup['role'];
+
+function loadSaved():EconomySnapshot|undefined{try{const raw=localStorage.getItem(SAVE_KEY);return raw?JSON.parse(raw):undefined}catch{return undefined}}
 
 export default function App(){
+  const initialSaved=useRef(loadSaved()).current;
   const engineRef=useRef<EconomyEngine>();
-  if(!engineRef.current) engineRef.current=new EconomyEngine(loadSaved()?.mode??'sandbox',loadSaved());
+  if(!engineRef.current)engineRef.current=new EconomyEngine(initialSaved?.mode??'sandbox',initialSaved);
   const [econ,setEcon]=useState(()=>engineRef.current!.snapshot());
-  const [tab,setTab]=useState<Tab>('Monetary');
-  const [autoRun,setAutoRun]=useState(false);
-  const [speed,setSpeed]=useState(1);
-  const [focus,setFocus]=useState(false);
-  const [selected,setSelected]=useState<string|null>(null);
-  const [report,setReport]=useState(false);
-  const [systems,setSystems]=useState(false);
-  const [showNews,setShowNews]=useState(false);
-  const [guide,setGuide]=useState(false);
-  const [simple,setSimple]=useState(()=>localStorage.getItem(SIMPLE_KEY)!=='advanced');
-  const [trendCollapsed,setTrendCollapsed]=useState(false);
-  const [toast,setToast]=useState('Welcome. Read the objective, make one move, then advance a quarter.');
-  const [cityView,setCityView]=useState<CityView>('City');
-  const [quarterBefore,setQuarterBefore]=useState<EconomySnapshot|null>(null);
-  const [showPulse,setShowPulse]=useState(false);
   const [started,setStarted]=useState(()=>localStorage.getItem(START_KEY)==='yes');
-  const [role,setRole]=useState<StartSetup['role']>(()=>(localStorage.getItem('macrostate-role-v8') as StartSetup['role'])||'Chief Economist');
+  const [role,setRole]=useState<Role>(()=>(localStorage.getItem(ROLE_KEY) as Role)||'Chief Economist');
+  const [tab,setTab]=useState<Tab>('Advisor');
+  const [lastPolicy,setLastPolicy]=useState<PolicySpec|null>(null);
+  const [newsOpen,setNewsOpen]=useState(false);
+  const [toast,setToast]=useState('Read the regime, risks and charts. Make one decision, then advance one quarter.');
 
-  const safeSave=(s:EconomySnapshot)=>{try{localStorage.setItem(KEY,JSON.stringify(s))}catch(err){console.warn('Save skipped',err)}};
-  const sync=()=>{try{const s=engineRef.current!.snapshot();setEcon(s);safeSave(s)}catch(err){console.error('Sync failed',err);setToast('A state update was safely blocked. Reload if needed.')}};
-  const quarter=()=>{try{const before=engineRef.current!.snapshot();engineRef.current!.stepQuarter();const after=engineRef.current!.snapshot();setQuarterBefore(before);setEcon(after);safeSave(after);setShowPulse(false);setToast(engineRef.current!.state.lastQuarterSummary)}catch(err){console.error('Quarter advance failed',err);setAutoRun(false);setToast('Quarter advance was stopped safely. Your previous state is preserved.')}};
-  useEffect(()=>{if(!autoRun||!started)return;const ms=speed===1?12000:speed===2?7000:4200;const id=window.setInterval(quarter,ms);return()=>window.clearInterval(id)},[autoRun,speed,started]);
-
+  const sync=()=>{const s=engineRef.current!.snapshot();setEcon(s);localStorage.setItem(SAVE_KEY,JSON.stringify(s))};
   const recommendations=useMemo(()=>engineRef.current!.advisor(),[econ]);
-  const enact=(p:PolicySpec)=>{const r=engineRef.current!.enact(p.id);sync();setToast(r.ok?`${p.label} enacted. Let the effects transmit before overreacting.`:r.reason)};
-  const shock=(k:'oil'|'financial'|'sanctions'|'boom'|'food')=>{engineRef.current!.triggerShock(k);sync();setToast(`${k} scenario shock triggered.`)};
-  const newGame=(mode:GameMode,setup?:StartSetup)=>{
-    engineRef.current=new EconomyEngine(mode);
-    if(setup){
-      setRole(setup.role);localStorage.setItem('macrostate-role-v8',setup.role);
-      if(setup.role==='Central Bank Governor')setTab('Monetary');
-      else if(setup.role==='Finance Minister')setTab('Fiscal');
-      else if(setup.role==='Development Minister')setTab('Structural');
-      else setTab('Advisor');
-      const s=engineRef.current.state;
-      if(setup.scenario==='Inflation Shock'){s.inflation=.079;s.inflationExpected=.061;s.growth=.041;s.approval=.47;s.regime='Overheating';s.macroRisk=34;}
-      if(setup.scenario==='Recession'){s.growth=-.032;s.unemployment=.091;s.businessConfidence=.39;s.consumerConfidence=.43;s.approval=.41;s.regime='Recession';s.macroRisk=41;}
-      if(setup.scenario==='Financial Crisis'){s.bankHealth=.46;s.creditGrowth=-.052;s.fci=74;s.macroRisk=61;s.approval=.43;s.regime='Financial Stress';}
-      if(setup.difficulty==='Accessible'){s.policyCapacity=100;s.politicalCapital=85;setSimple(true);}
-      if(setup.difficulty==='Expert'){s.policyCapacity=78;s.politicalCapital=58;s.approval=Math.max(.15,s.approval-.04);s.macroRisk=Math.min(100,s.macroRisk+8);setSimple(false);}
-    }
-    sync();setSelected(null);setShowPulse(false);setQuarterBefore(null);setAutoRun(false);setStarted(true);localStorage.setItem(START_KEY,'yes');setToast(mode==='mission'?'Campaign started — follow the mandate and protect the whole economy.':'Sandbox started — every policy tool is available.');
-  };
-  const guideStart=(mode:GameMode)=>{setGuide(false);newGame(mode);setSimple(true);localStorage.setItem(SIMPLE_KEY,'beginner');localStorage.setItem(GUIDE_KEY,'done');};
-  const continueGame=()=>{setStarted(true);setAutoRun(false);localStorage.setItem(START_KEY,'yes');};
-  const openGuide=()=>setGuide(true);
-  const toggleSimple=()=>setSimple(v=>{const next=!v;localStorage.setItem(SIMPLE_KEY,next?'beginner':'advanced');return next});
-  const district=selected?districtContext(selected,econ):null;
-  const topPriority=priorityText(econ);
 
-  return <>
-  {!started && <StartScreen hasSave={!!loadSaved()} econ={econ} onContinue={continueGame} onStart={newGame} onGuide={openGuide} />}
-  <div className={`app v4 v5 v6 v7 v8 ${focus?'focus':''} ${simple?'simple-mode':'advanced-mode'} ${trendCollapsed?'trend-collapsed':''}`}>
-    <header className="topbar">
-      <div className="brand"><div className="logo">M</div><div><strong>MACROSTATE</strong><small>{role.toUpperCase()} • V8 LIVING CITY</small></div></div>
-      <div className="period"><span>Q{econ.quarter} {econ.year}</span><b>{econ.regime}</b></div>
-      <div className="priority-strip"><span>Priority</span><b>{topPriority}</b></div>
-      <div className="top-controls">
-        <button className="guide-btn" onClick={openGuide}>Guide</button>
-        <button className={`mode-toggle ${simple?'beginner':''}`} onClick={toggleSimple}>{simple?'Beginner':'Advanced'}</button>
-        <button className={autoRun?'active':''} onClick={()=>setAutoRun(v=>!v)}>{autoRun?'Ⅱ Auto':'▶ Auto'}</button>
-        {autoRun&&<div className="speed">{[1,2,4].map(s=><button key={s} onClick={()=>setSpeed(s)} className={speed===s?'active':''}>×{s}</button>)}</div>}
-        {quarterBefore&&<button onClick={()=>setShowPulse(v=>!v)}>Review</button>}
-        <button className="next-quarter" onClick={quarter}>Next Quarter →</button>
-        {!simple&&<><button onClick={()=>setReport(true)}>Brief</button><button onClick={()=>setSystems(true)}>Systems</button><button onClick={()=>setFocus(v=>!v)}>{focus?'Dashboard':'Focus'}</button></>}
-      </div>
+  const enact=(p:PolicySpec)=>{
+    const result=engineRef.current!.enact(p.id);
+    if(result.ok){setLastPolicy(p);setToast(`${p.label} enacted. Transmission will unfold over ${p.duration} quarters.`);}
+    else setToast(result.reason);
+    sync();
+  };
+
+  const advance=()=>{
+    try{
+      engineRef.current!.stepQuarter();
+      sync();
+      setToast(engineRef.current!.state.lastLearningNote);
+    }catch(err){console.error(err);setToast('Simulation guard caught an error. Your previous state was preserved.');}
+  };
+
+  const startGame=(mode:GameMode,setup:V9Setup)=>{
+    engineRef.current=new EconomyEngine(mode);
+    applySetup(engineRef.current.state,setup);
+    setRole(setup.role);localStorage.setItem(ROLE_KEY,setup.role);
+    setTab(roleTab(setup.role));
+    setLastPolicy(null);
+    setStarted(true);localStorage.setItem(START_KEY,'yes');
+    sync();
+    setToast(mode==='mission'?'Mandate active. Stabilize the economy without sacrificing the rest of the system.':'Sandbox active. Test policies and shocks freely.');
+  };
+
+  const continueGame=()=>{setStarted(true);localStorage.setItem(START_KEY,'yes')};
+  const reset=()=>{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(START_KEY);engineRef.current=new EconomyEngine('sandbox');setEcon(engineRef.current.snapshot());setStarted(false);setLastPolicy(null)};
+  const activeImpulse=lastPolicy??findLastPolicy(econ.lastPolicy);
+
+  if(!started)return <StartScreenV9 hasSave={!!initialSaved} econ={econ} onContinue={continueGame} onStart={startGame}/>;
+
+  return <div className="v9-app">
+    <header className="command-header">
+      <div className="command-brand"><div className="command-logo">M</div><div><strong>MACROSTATE</strong><small>POLICY COMMAND • V9</small></div></div>
+      <div className="command-period"><span>Q{econ.quarter} {econ.year}</span><b>{econ.regime}</b></div>
+      <div className="command-role"><span>Role</span><b>{role}</b></div>
+      <div className="command-score"><span>National score</span><b>{econ.nationalScore.toFixed(0)}</b></div>
+      <div className="command-actions"><button onClick={()=>setTab('Advisor')}>Advisor</button><button onClick={()=>setNewsOpen(v=>!v)}>Wire <i>{econ.news.length}</i></button><button className="reset-button" onClick={reset}>New mandate</button><button className="advance-button" onClick={advance}>Advance quarter →</button></div>
     </header>
 
-    <main className="game-layout">
-      <section className="city-wrap">
-        <LivingCity econ={econ} view={cityView} selected={selected} onSelect={setSelected} />
-        <div className="city-overlay top-left"><span className="live-dot"/> NATIONAL CAPITAL<div>{selected?'District selected':'Click a district to inspect it'}</div></div>
-        <div className="city-lenses"><span>City lens</span>{(['City','Prosperity','Jobs','Risk'] as CityView[]).map(v=><button key={v} className={cityView===v?'active':''} onClick={()=>setCityView(v)}>{v}</button>)}</div>
-        {district&&<div className={`district-card ${district.tone}`}><header><span>{district.icon}</span><div><small>{selected}</small><b>{district.title}</b></div><button onClick={()=>setSelected(null)}>×</button></header><p>{district.description}</p><div><span>{district.metricLabel}</span><strong>{district.metric}</strong></div></div>}
-        {econ.activeMission&&<div className="mission-card"><span>GUIDED OBJECTIVE</span><b>{econ.activeMission.title}</b><p>{econ.activeMission.description}</p><div><progress value={econ.activeMission.progress} max={1}/><small>{econ.activeMission.targetText} • {Math.max(0,econ.activeMission.deadline-econ.turn)}Q left</small></div></div>}
-        <div className="toast"><span>●</span>{toast}</div>
-        {showPulse&&<QuarterPulse previous={quarterBefore} current={econ} onClose={()=>setShowPulse(false)}/>}        
+    <KpiBoard econ={econ}/>
+
+    <main className="command-grid">
+      <PolicyConsoleV9 econ={econ} tab={tab} setTab={setTab} onPolicy={enact} recommendations={recommendations}/>
+      <section className="analysis-column">
+        <ChartDeck econ={econ}/>
+        <TransmissionMap econ={econ} lastPolicy={activeImpulse}/>
+        <LearningDebrief econ={econ}/>
       </section>
-      {!focus&&<PolicyPanel tab={tab} setTab={setTab} econ={econ} onPolicy={enact} onShock={shock} simple={simple} recommendations={recommendations} onAdvanced={()=>{setSimple(false);localStorage.setItem(SIMPLE_KEY,'advanced')}}/>}
+      <EventDesk econ={econ} recommendations={recommendations}/>
     </main>
 
-    {!focus&&<section className="bottom-deck monitor-deck"><TrendPanel econ={econ} collapsed={trendCollapsed} onToggle={()=>setTrendCollapsed(v=>!v)}/></section>}
+    <footer className="command-footer"><div className="footer-status"><span className={`pulse-dot ${econ.activeEvents.length?'alert':''}`}/><b>{econ.activeEvents.length?`${econ.activeEvents.length} active policy event${econ.activeEvents.length>1?'s':''}`:'No acute policy event'}</b></div><div className="footer-ticker"><span>{econ.news[0]?.period}</span>{econ.news[0]?.text??'Policy command initialized.'}</div><div className="footer-mode">{econ.mode==='mission'?'GUIDED CAMPAIGN':'OPEN SANDBOX'}</div></footer>
 
-    <footer className="footer"><div className="mode-switch"><button className={econ.mode==='sandbox'?'active':''} onClick={()=>newGame('sandbox')}>Sandbox</button><button className={econ.mode==='mission'?'active':''} onClick={()=>newGame('mission')}>Guided Campaign</button></div><button className="news-toggle" onClick={()=>setShowNews(v=>!v)}>Economic Wire <b>{econ.news.length}</b></button><div className="ticker"><span className={econ.news[0]?.tone}>{econ.news[0]?.period}</span>{econ.news[0]?.text}</div></footer>
-    {showNews&&<aside className="news-drawer"><header><b>Economic Wire</b><button onClick={()=>setShowNews(false)}>×</button></header>{econ.news.map(n=><article key={n.id}><span className={n.tone}>{n.period}</span><p>{n.text}</p></article>)}</aside>}
-    {report&&<ReportModal econ={econ} onClose={()=>setReport(false)}/>} 
-    {systems&&<SystemsModal econ={econ} advice={engineRef.current!.cabinet()} onPolicy={(p)=>{enact(p);setSystems(false)}} onClose={()=>setSystems(false)}/>} 
-    {guide&&<OnboardingModal econ={econ} onClose={()=>setGuide(false)} onStart={guideStart}/>} 
-  </div></>;
+    {newsOpen&&<aside className="wire-drawer"><header><div><span className="eyebrow">ECONOMIC WIRE</span><h2>Policy & market feed</h2></div><button onClick={()=>setNewsOpen(false)}>×</button></header>{econ.news.map(n=><article key={n.id} className={n.tone}><span>{n.period}</span><p>{n.text}</p></article>)}</aside>}
+    <div className="command-toast">{toast}</div>
+  </div>;
 }
 
-function Metric({title,value,sub,state}:{title:string;value:string;sub:string;state:'good'|'warn'|'bad'}){return <div className={`metric ${state}`}><span>{title}</span><strong>{value}</strong><small>{sub}</small></div>}
+function roleTab(role:Role):Tab{return role==='Central Bank Governor'?'Monetary':role==='Finance Minister'?'Fiscal':role==='Planning Minister'?'Structural':'Advisor'}
 
-function priorityText(e:EconomySnapshot){if(e.inflation>.055)return'Inflation';if(e.unemployment>.075||e.growth<0)return'Jobs & growth';if(e.bankHealth<.6)return'Bank stability';if(e.debtRatio>.9)return'Debt sustainability';if(e.housingAffordability<.5)return'Housing';return'Productivity & resilience'}
+function findLastPolicy(text:string){return POLICIES.find(p=>text.startsWith(p.label))??null}
 
-function districtContext(name:string,e:EconomySnapshot){
-  const data:Record<string,{icon:string;title:string;description:string;metricLabel:string;metric:string;tone:string}>={
-    'CENTRAL BANK':{icon:'◉',title:'Monetary policy & expectations',description:'Interest rates shape demand, credit, inflation expectations and the currency.',metricLabel:'Policy rate',metric:pct(e.policyRate),tone:e.inflation>.06?'warn':'good'},
-    'TREASURY':{icon:'◆',title:'Public finance',description:'Fiscal choices support demand and investment but consume treasury space and affect debt.',metricLabel:'Debt / GDP',metric:pct(e.debtRatio),tone:e.debtRatio>.9?'bad':e.debtRatio>.75?'warn':'good'},
-    'TECH PARK':{icon:'⌁',title:'Technology & productivity',description:'Innovation expands potential output and makes growth less inflationary over time.',metricLabel:'Technology',metric:e.technology.toFixed(0),tone:e.technology<75?'warn':'good'},
-    'HOSPITAL':{icon:'+',title:'Health & resilience',description:'Household welfare and labor resilience deteriorate when poverty and economic stress rise.',metricLabel:'Poverty',metric:pct(e.poverty),tone:e.poverty>.16?'bad':e.poverty>.12?'warn':'good'},
-    'MARKET':{icon:'▦',title:'Household demand',description:'Shops respond to purchasing power, confidence, prices and labor-market conditions.',metricLabel:'Consumer confidence',metric:pct(e.consumerConfidence,0),tone:e.consumerConfidence<.45?'bad':e.consumerConfidence<.58?'warn':'good'},
-    'BANK HQ':{icon:'$',title:'Financial transmission',description:'Healthy banks pass monetary policy into lending. Weak banks can choke credit even after rate cuts.',metricLabel:'Bank health',metric:`${(e.bankHealth*100).toFixed(0)}/100`,tone:e.bankHealth<.5?'bad':e.bankHealth<.68?'warn':'good'},
-    'FACTORY':{icon:'▰',title:'Industrial production',description:'Industry reacts to demand, financing conditions, energy security and productivity.',metricLabel:'Business confidence',metric:pct(e.businessConfidence,0),tone:e.businessConfidence<.45?'bad':'good'},
-    'HOUSING':{icon:'⌂',title:'Housing market',description:'Rates and credit affect house prices while new supply improves long-run affordability.',metricLabel:'Affordability',metric:pct(e.housingAffordability,0),tone:e.housingAffordability<.5?'bad':e.housingAffordability<.65?'warn':'good'},
-    'UNIVERSITY':{icon:'◇',title:'Human capital',description:'Education and research increase the productive capacity of workers and firms over time.',metricLabel:'Productivity',metric:e.productivity.toFixed(2),tone:'good'},
-    'SME DISTRICT':{icon:'▣',title:'Small business & jobs',description:'SMEs are sensitive to credit, demand and confidence and are a key channel into employment.',metricLabel:'Firms',metric:String(e.firms.length),tone:e.bankruptcies>1?'bad':'good'},
-    'PORT / TRADE':{icon:'≋',title:'Trade & exchange rate',description:'Exports, imports and the currency transmit foreign demand and supply shocks into the economy.',metricLabel:'FX index',metric:e.exchangeRate.toFixed(3),tone:e.exchangeRate>1.25?'bad':e.exchangeRate>1.1?'warn':'good'},
-    'ENERGY':{icon:'ϟ',title:'Energy system',description:'Energy resilience affects production costs, inflation and the environmental footprint.',metricLabel:'Energy security',metric:pct(e.energySecurity,0),tone:e.energySecurity<.55?'bad':e.energySecurity<.7?'warn':'good'}
-  };return data[name]
+function applySetup(s:EconomySnapshot,setup:V9Setup){
+  if(setup.scenario==='Inflation Shock'){s.inflation=.082;s.coreInflation=.065;s.inflationExpected=.061;s.wageGrowth=.068;s.growth=.038;s.outputGap=.035;s.approval=.47;s.regime='Overheating';s.macroRisk=38;s.credibility=.58;}
+  if(setup.scenario==='Recession'){s.growth=-.036;s.unemployment=.094;s.outputGap=-.06;s.businessConfidence=.38;s.consumerConfidence=.41;s.creditGrowth=-.01;s.approval=.42;s.regime='Recession';s.macroRisk=43;}
+  if(setup.scenario==='Financial Crisis'){s.bankHealth=.44;s.creditGrowth=-.065;s.fci=77;s.macroRisk=68;s.approval=.43;s.sovereignSpread=.025;s.regime='Financial Stress';}
+  if(setup.scenario==='Debt Stress'){s.debtRatio=1.03;s.primaryBalance=-.055;s.sovereignSpread=.055;s.treasury=12;s.approval=.45;s.macroRisk=57;s.regime='Fiscal Stress';}
+  if(setup.difficulty==='Learning'){s.policyCapacity=100;s.politicalCapital=88;s.credibility=Math.max(s.credibility,.75);}
+  if(setup.difficulty==='Expert'){s.policyCapacity=72;s.politicalCapital=58;s.approval=Math.max(.15,s.approval-.04);s.macroRisk=Math.min(100,s.macroRisk+10);s.credibility=Math.max(.2,s.credibility-.08);}
+  s.lastLearningNote='Start by diagnosing the macro regime. Compare demand, inflation, fiscal and financial drivers before using an instrument.';
 }
