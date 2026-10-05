@@ -24,7 +24,8 @@ export default function App(){
   const [tab,setTab]=useState<Tab>('Monetary');
   const [selected,setSelected]=useState<PolicySpec|null>(null);
   const [wire,setWire]=useState(false);
-  const [advisorOpen,setAdvisorOpen]=useState(false);\n  const [selectedMetric,setSelectedMetric]=useState<MetricKey>('inflation');
+  const [advisorOpen,setAdvisorOpen]=useState(false);
+  const [selectedMetric,setSelectedMetric]=useState<MetricKey>('inflation');
   const [toast,setToast]=useState('Read the indicators, diagnose the economy, then choose a policy.');
 
   const persist=(s:EconomySnapshot)=>{setEcon(s);localStorage.setItem(SAVE_KEY,JSON.stringify(s))};
