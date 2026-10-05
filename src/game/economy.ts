@@ -17,7 +17,7 @@ const initial = (mode:GameMode):EconomySnapshot => ({
   realGDP:1018, potentialGDP:1000, growth:.028,
   inflation:.034, coreInflation:.031, inflationExpected:.032, wageGrowth:.038, realWageGrowth:.004, unemployment:.055, outputGap:.018,
   policyRate:.045, realRate:.013, credibility:.74,
-  debtRatio:.525, primaryBalance:-.018, sovereignSpread:.012, treasury:28, fxReserves:36, currentAccount:.010,
+  debtRatio:.525, primaryBalance:-.018, fiscalDemand:0, sovereignSpread:.012, treasury:28, fxReserves:36, currentAccount:.010,
   approval:.56, politicalCapital:72, policyCapacity:100,
   bankHealth:.79, creditGrowth:.038, exchangeRate:1.0,
   housingIndex:100, housingAffordability:.72,
@@ -45,6 +45,7 @@ export class EconomyEngine {
     if(!this.state.households) this.state.households=seedHouseholds();
     if(!this.state.election) this.state.election={lastElectionTurn:0,nextElectionTurn:16,incumbentShare:.54,oppositionShare:.46,turnout:.68,campaignActive:false,lastResult:'No election held yet'};
     this.state.bankruptcies ??= 0; this.state.firmBirths ??= 0; this.state.totalEmployment ??= 0; this.state.averageWage ??= 1;
+    this.state.fiscalDemand ??= 0;
     this.state.coreInflation ??= this.state.inflation*.9; this.state.wageGrowth ??= this.state.inflationExpected+.006; this.state.realWageGrowth ??= this.state.wageGrowth-this.state.inflation; this.state.outputGap ??= this.state.realGDP/this.state.potentialGDP-1;
     this.state.credibility ??= .72; this.state.sovereignSpread ??= .012; this.state.fxReserves ??= 36; this.state.currentAccount ??= (this.state.exports-this.state.imports)/Math.max(1,this.state.realGDP); this.state.activeEvents ??= []; this.state.eventHistory ??= []; this.state.lastLearningNote ??= 'Read the macro regime before choosing a policy.';
     if(this.state.totalEmployment<=0){ this.state.totalEmployment=this.state.firms.reduce((a,f)=>a+f.employees,0); this.state.averageWage=this.state.firms.reduce((a,f)=>a+f.employees*f.wage,0)/Math.max(1,this.state.totalEmployment); }
@@ -149,6 +150,7 @@ export class EconomyEngine {
     s.outputGap=outputGap;
     const qGrowth = clamp(
       .0056 + (imp.growth??0) + .012*(s.businessConfidence-.62) + .009*(s.consumerConfidence-.62)
+      + .012*s.fiscalDemand
       + .035*(s.creditGrowth-.03) - .075*Math.max(-.02,s.realRate-.012) - .045*Math.max(0,outputGap-.04)
       + noise()*.0022,
       -.055,.07
