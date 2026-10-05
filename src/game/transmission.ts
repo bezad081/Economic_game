@@ -24,11 +24,13 @@ export function transmitDemand(s: EconomySnapshot, imp: Effects): TransmissionRe
   const credit = (imp.credit ?? 0) * TRANSMISSION.monetary.creditPassThrough;
   const confidence = imp.confidence ?? 0;
   const fiscal = imp.fiscalDemand ?? 0;
+  const householdDemand = imp.householdDemand ?? 0;
 
   const consumption =
     credit * TRANSMISSION.monetary.consumptionFromCredit +
     confidence * TRANSMISSION.monetary.confidenceToConsumption +
-    fiscal * TRANSMISSION.fiscal.incomeToConsumption;
+    fiscal * TRANSMISSION.fiscal.incomeToConsumption +
+    householdDemand * TRANSMISSION.monetary.householdDemandToConsumption;
 
   const investment =
     credit * TRANSMISSION.monetary.investmentFromCredit +
@@ -49,6 +51,7 @@ export function transmitDemand(s: EconomySnapshot, imp: Effects): TransmissionRe
   if (Math.abs(credit) > 0.0001) explanation.push('Credit conditions → household spending and firm investment');
   if (Math.abs(confidence) > 0.0001) explanation.push('Confidence → consumption and investment plans');
   if (Math.abs(fiscal) > 0.0001) explanation.push('Fiscal impulse → government demand → aggregate demand');
+  if (Math.abs(householdDemand) > 0.0001) explanation.push('Household disposable income/support → consumption → aggregate demand');
   if (!explanation.length) explanation.push('No material policy impulse is currently passing through demand');
 
   return {credit,consumption,investment,government,demandGrowth,outputGrowth,explanation};
