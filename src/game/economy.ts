@@ -14,7 +14,7 @@ class RNG {
 
 const initial = (mode:GameMode):EconomySnapshot => ({
   year:2027, quarter:1, turn:0, mode,
-  realGDP:1018, potentialGDP:1000, growth:.028,
+  realGDP:1018, potentialGDP:1000, consumption:620, investment:210, governmentSpending:190, netExports:-2, growth:.028,
   inflation:.034, coreInflation:.031, inflationExpected:.032, wageGrowth:.038, realWageGrowth:.004, unemployment:.055, outputGap:.018,
   policyRate:.045, realRate:.013, credibility:.74,
   debtRatio:.525, primaryBalance:-.018, fiscalDemand:0, sovereignSpread:.012, treasury:28, fxReserves:36, currentAccount:.010,
@@ -46,6 +46,10 @@ export class EconomyEngine {
     if(!this.state.election) this.state.election={lastElectionTurn:0,nextElectionTurn:16,incumbentShare:.54,oppositionShare:.46,turnout:.68,campaignActive:false,lastResult:'No election held yet'};
     this.state.bankruptcies ??= 0; this.state.firmBirths ??= 0; this.state.totalEmployment ??= 0; this.state.averageWage ??= 1;
     this.state.fiscalDemand ??= 0;
+    this.state.consumption ??= this.state.realGDP*.61;
+    this.state.investment ??= this.state.realGDP*.21;
+    this.state.governmentSpending ??= this.state.realGDP*.19;
+    this.state.netExports ??= this.state.exports-this.state.imports;
     this.state.coreInflation ??= this.state.inflation*.9; this.state.wageGrowth ??= this.state.inflationExpected+.006; this.state.realWageGrowth ??= this.state.wageGrowth-this.state.inflation; this.state.outputGap ??= this.state.realGDP/this.state.potentialGDP-1;
     this.state.credibility ??= .72; this.state.sovereignSpread ??= .012; this.state.fxReserves ??= 36; this.state.currentAccount ??= (this.state.exports-this.state.imports)/Math.max(1,this.state.realGDP); this.state.activeEvents ??= []; this.state.eventHistory ??= []; this.state.lastLearningNote ??= 'Read the macro regime before choosing a policy.';
     if(this.state.totalEmployment<=0){ this.state.totalEmployment=this.state.firms.reduce((a,f)=>a+f.employees,0); this.state.averageWage=this.state.firms.reduce((a,f)=>a+f.employees*f.wage,0)/Math.max(1,this.state.totalEmployment); }
@@ -157,6 +161,20 @@ export class EconomyEngine {
       + noise()*.0022,
       -.055,.07
     );
+    // National-account demand channels: policy affects components first; GDP responds to their combined movement.
+    const consumptionGrowth = clamp(
+      .0025 + .055*(s.consumerConfidence-.62) - .018*(s.realRate-.012) + .035*(s.realWageGrowth)
+      + (imp.confidence??0)*.18 + noise()*.0015, -.035, .045
+    );
+    const investmentGrowth = clamp(
+      .004 + .075*(s.businessConfidence-.62) + .11*(s.creditGrowth-.03) - .045*Math.max(0,s.realRate-.012)
+      + .025*(s.productivity-1) + noise()*.002, -.06, .075
+    );
+    const governmentGrowth = clamp(.001 + .18*s.fiscalDemand + noise()*.001, -.025, .035);
+    s.consumption *= 1 + consumptionGrowth;
+    s.investment *= 1 + investmentGrowth;
+    s.governmentSpending *= 1 + governmentGrowth;
+    s.netExports = s.exports-s.imports;
     s.realGDP *= 1 + qGrowth;
     s.growth = clamp(qGrowth*4, -.20,.30);
 
