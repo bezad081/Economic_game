@@ -135,6 +135,21 @@ export interface HistoryPoint {
   turnout: number;
 }
 
+export interface LearningReview {
+  policyId: string;
+  policyLabel: string;
+  policyTab: Exclude<Tab,'Advisor'>;
+  enactedTurn: number;
+  observedTurn: number;
+  channel: string;
+  lagQuarters: number;
+  outcome: 'favorable' | 'mixed' | 'unfavorable';
+  result: string;
+  mechanism: string;
+  tradeoff: string;
+  nextStep: string;
+}
+
 export interface AdvisorRecommendation {
   id: string;
   why: string;
@@ -224,6 +239,8 @@ export interface EconomySnapshot {
   lastPolicy: string;
   lastQuarterSummary: string;
   lastLearningNote: string;
+  lastLearningReview: LearningReview | null;
+  pendingPolicy: {id:string; label:string; tab:Exclude<Tab,'Advisor'>; enactedTurn:number; before:{growth:number;inflation:number;unemployment:number;debt:number;creditGrowth:number;investment:number;consumption:number}} | null;
   firms: FirmState[];
   households: HouseholdCohort[];
   election: ElectionState;
