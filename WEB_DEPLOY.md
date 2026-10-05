@@ -1,38 +1,59 @@
 # MACROSTATE Web deployment
 
-This edition is prepared for **Pygbag + GitHub Pages**.
+The repository contains two implementations:
 
-## Why Pygbag?
-The original project is a Pygame game. GitHub Pages cannot run Python directly, so Pygbag packages the Pygame/Python game for the browser through WebAssembly while preserving the existing Python economic engine.
+- **Web:** React + TypeScript + Vite, deployed to GitHub Pages.
+- **Python:** Pygame desktop/browser-oriented implementation under `python/`.
 
 ## GitHub Pages
-1. Create a public repository and upload the contents of this folder to the repository root.
-2. Open **Settings → Pages**.
-3. Set **Source** to **GitHub Actions**.
-4. The included `.github/workflows/deploy.yml` builds the game and deploys `build/web`.
-5. Open the **Actions** tab. A green `Build and Deploy MACROSTATE Web` run means the site is live.
 
-Typical project URL:
+The web application is built and deployed by:
 
-`https://<username>.github.io/<repository-name>/`
-
-## Local desktop
-
-```bash
-python -m pip install -r requirements.txt
-python main.py
+```text
+.github/workflows/deploy.yml
 ```
 
-## Local browser test
+The workflow runs:
 
 ```bash
-python -m pip install -r requirements-web.txt
-python -m pygbag .
+npm install
+npm run build
 ```
 
-Then open the local URL shown by Pygbag.
+and publishes the generated `dist/` directory to GitHub Pages.
 
-## Browser compatibility notes
-- The main loop and all launch/menu loops are async-aware and yield with `await asyncio.sleep(0)`.
-- The code uses `pygame-ce`, which is the Pygbag-supported Pygame implementation.
-- First browser load can take longer because the Python/Pygame WebAssembly runtime must initialize.
+In GitHub:
+
+1. Open **Settings → Pages**.
+2. Set the source to **GitHub Actions**.
+3. Push to `main` or run the workflow manually from the **Actions** tab.
+
+## Local web development
+
+```bash
+npm install
+npm run dev
+```
+
+Production build:
+
+```bash
+npm run build
+```
+
+## Python game
+
+The Python implementation is kept separate from the web application:
+
+```bash
+python -m pip install -r python/requirements.txt
+python python/main.py
+```
+
+For the deterministic economic smoke tests:
+
+```bash
+python python/validate_economy.py
+```
+
+The Python browser packaging notes and dependencies are kept in `python/requirements-web.txt`.
