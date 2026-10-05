@@ -33,8 +33,7 @@ export function transmitDemand(s: EconomySnapshot, imp: Effects): TransmissionRe
   const investment =
     credit * TRANSMISSION.monetary.investmentFromCredit +
     confidence * TRANSMISSION.monetary.confidenceToInvestment +
-    fiscal * TRANSMISSION.firms.capacityToInvestment +
-    ((s.firmSales / TRANSMISSION.firms.salesToInvestment) - (94 / TRANSMISSION.firms.salesToInvestment)) * 0.0001;
+    fiscal * TRANSMISSION.firms.capacityToInvestment;
 
   const government = fiscal * TRANSMISSION.fiscal.demandImpulseToGovernment;
 
