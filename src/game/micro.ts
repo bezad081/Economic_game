@@ -35,7 +35,7 @@ export function seedHouseholds():HouseholdCohort[]{
 export function updateMicroeconomy(s:EconomySnapshot, rand:()=>number){
   if(!s.firms?.length) s.firms=seedFirms();
   if(!s.households?.length) s.households=seedHouseholds();
-  let bankruptcies=0,births=0,totalEmployment=0,wageBill=0;
+  let bankruptcies=0,births=0,totalEmployment=0,wageBill=0,firmSales=0,firmInvestment=0;
   const gap=s.realGDP/Math.max(1,s.potentialGDP)-1;
   const realFunding=Math.max(-.03,s.realRate);
   const sectorBoost:Record<FirmSector,number>={
@@ -69,6 +69,8 @@ export function updateMicroeconomy(s:EconomySnapshot, rand:()=>number){
     }
     totalEmployment+=f.employees;
     wageBill+=f.employees*f.wage;
+    firmSales+=revenue;
+    firmInvestment+=f.investment;
   }
 
   if(s.businessConfidence>.72 && s.creditGrowth>.025 && rand()>.72){
@@ -93,6 +95,15 @@ export function updateMicroeconomy(s:EconomySnapshot, rand:()=>number){
 
   const low=s.households.find(h=>h.id==='lower')!;
   const middle=s.households.find(h=>h.id==='middle')!;
+  const householdIncome=s.households.reduce((a,h)=>a+h.income*h.populationShare,0);
+  const householdConsumption=s.households.reduce((a,h)=>a+h.income*h.consumption*h.populationShare,0);
+  const householdSavings=Math.max(0,householdIncome-householdConsumption);
+  const capacityUtilization=clamp(.72+.75*gap+.18*(s.businessConfidence-.6)-.08*Math.max(0,s.policyRate-.06),.45,1.08);
+  s.householdIncome=householdIncome;
+  s.householdSavings=householdSavings;
+  s.firmSales=firmSales;
+  s.firmInvestment=firmInvestment;
+  s.capacityUtilization=capacityUtilization;
   s.poverty=clamp(.65*s.poverty+.35*(.04+.62*low.unemployment+.10*inflationPain+.08*housingPain),.025,.46);
   s.inequality=clamp(.72*s.inequality+.28*(.28+.12*Math.log(Math.max(1,s.households[2].wealth/middle.wealth))+.06*housingPain),.22,.65);
   s.consumerConfidence=clamp(.45*s.consumerConfidence+.55*s.households.reduce((a,h)=>a+h.sentiment*h.populationShare,0),.1,.95);
