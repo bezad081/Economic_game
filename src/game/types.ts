@@ -107,6 +107,10 @@ export interface NewsItem {
 export interface HistoryPoint {
   period: string;
   gdp: number;
+  consumption?: number;
+  investment?: number;
+  governmentSpending?: number;
+  netExports?: number;
   growth: number;
   inflation: number;
   coreInflation?: number;
