@@ -131,6 +131,7 @@ export class EconomyEngine {
     const noise = () => this.rng.range(-1,1);
 
     s.policyCapacity = clamp(s.policyCapacity + 30 + 6*Math.max(0,s.approval-.5),0,100);
+    s.fiscalDemand *= .72;
     s.politicalCapital = clamp(s.politicalCapital + 1.2*(s.approval-.45),0,100);
     for(const k of Object.keys(s.cooldowns)) {
       const next=(s.cooldowns[k]??0)-1;
@@ -154,16 +155,9 @@ export class EconomyEngine {
 
     const outputGap=(s.realGDP/s.potentialGDP)-1;
     s.outputGap=outputGap;
-    const qGrowth = clamp(
-      .0056 + (imp.growth??0) + .012*(s.businessConfidence-.62) + .009*(s.consumerConfidence-.62)
-      + .012*s.fiscalDemand
-      + .035*(s.creditGrowth-.03) - .075*Math.max(-.02,s.realRate-.012) - .045*Math.max(0,outputGap-.04)
-      + noise()*.0022,
-      -.055,.07
-    );
     // National-account demand channels: policy affects components first; GDP responds to their combined movement.
     const consumptionGrowth = clamp(
-      .0025 + .055*(s.consumerConfidence-.62) - .018*(s.realRate-.012) + .035*(s.realWageGrowth)
+      .0025 + .055*(s.consumerConfidence-.62) - .018*(s.realRate-.012) + .035*s.realWageGrowth
       + (imp.confidence??0)*.18 + noise()*.0015, -.035, .045
     );
     const investmentGrowth = clamp(
@@ -171,6 +165,13 @@ export class EconomyEngine {
       + .025*(s.productivity-1) + noise()*.002, -.06, .075
     );
     const governmentGrowth = clamp(.001 + .18*s.fiscalDemand + noise()*.001, -.025, .035);
+    const netExportsGrowth = clamp(.42*(s.growth-.02) - .03*(s.exchangeRate-1) + noise()*.001, -.04, .04);
+    const demandGrowth = .61*consumptionGrowth + .21*investmentGrowth + .19*governmentGrowth + .08*netExportsGrowth;
+    const qGrowth = clamp(
+      .0035 + .55*demandGrowth + (imp.growth??0) + .018*(s.businessConfidence-.62) + .012*(s.consumerConfidence-.62)
+      + .035*(s.creditGrowth-.03) - .075*Math.max(-.02,s.realRate-.012) - .045*Math.max(0,outputGap-.04)
+      + noise()*.0018, -.055,.07
+    );
     s.consumption *= 1 + consumptionGrowth;
     s.investment *= 1 + investmentGrowth;
     s.governmentSpending *= 1 + governmentGrowth;
