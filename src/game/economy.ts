@@ -81,7 +81,7 @@ export class EconomyEngine {
     this.state.policyCapacity -= policy.capacityCost;
     this.state.politicalCapital = clamp(this.state.politicalCapital - policy.politicalCost, 0, 100);
     this.state.cooldowns[id] = policy.cooldown;
-    const impulse:ActiveImpulse = { id:`${id}-${Date.now()}-${Math.floor(this.rng.next()*1e6)}`, label:policy.label, age:0, duration:policy.duration, effects:{...(policy.transmissionEffects ?? policy.effects)} };
+    const impulse:ActiveImpulse = { id:`${id}-${Date.now()}-${Math.floor(this.rng.next()*1e6)}`, label:policy.label, age:0, duration:policy.duration, effects:{...(policy.transmissionEffects ?? policy.effects)}, lag: policy.tab==='Monetary'?1:policy.tab==='Fiscal'?1:policy.tab==='Trade'?2:policy.tab==='Structural'?3:1 };
     this.state.impulses.push(impulse);
     if (id === 'rate_up') this.state.policyRate = clamp(this.state.policyRate + .005, -.01, .25);
     if (id === 'rate_down') this.state.policyRate = clamp(this.state.policyRate - .005, -.01, .25);
@@ -109,8 +109,10 @@ export class EconomyEngine {
   private aggregateImpulses():Effects {
     const out:Effects = {};
     for (const imp of this.state.impulses) {
-      const phase = (imp.age + 1) / Math.max(1, imp.duration);
-      const weight = Math.sin(Math.PI * phase) / Math.max(1, imp.duration * .62);
+      const lag = imp.lag ?? 0;
+      const activeDuration = Math.max(1, imp.duration - lag);
+      const phase = imp.age < lag ? 0 : (imp.age - lag + 1) / activeDuration;
+      const weight = phase <= 0 ? 0 : Math.sin(Math.PI * Math.min(1,phase)) / Math.max(1, activeDuration * .62);
       for (const [k,v] of Object.entries(imp.effects) as [keyof Effects,number][]) add(out,k,v*weight);
       imp.age += 1;
     }
