@@ -111,6 +111,11 @@ export interface HistoryPoint {
   investment?: number;
   governmentSpending?: number;
   netExports?: number;
+  householdIncome?: number;
+  householdSavings?: number;
+  firmSales?: number;
+  firmInvestment?: number;
+  capacityUtilization?: number;
   growth: number;
   inflation: number;
   coreInflation?: number;
@@ -161,6 +166,11 @@ export interface EconomySnapshot {
   investment: number;
   governmentSpending: number;
   netExports: number;
+  householdIncome: number;
+  householdSavings: number;
+  firmSales: number;
+  firmInvestment: number;
+  capacityUtilization: number;
   growth: number;
   inflation: number;
   coreInflation: number;
