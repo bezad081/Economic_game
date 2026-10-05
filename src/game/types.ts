@@ -73,6 +73,7 @@ export interface ActiveImpulse {
   label: string;
   age: number;
   duration: number;
+  lag?: number;
   effects: Effects;
 }
 
