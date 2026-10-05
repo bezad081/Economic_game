@@ -1,7 +1,13 @@
+# Python
 __pycache__/
 *.py[cod]
 .venv/
 venv/
-build/
+
+# Node / Vite
+node_modules/
+dist/
+
+# General
 *.log
 .DS_Store
