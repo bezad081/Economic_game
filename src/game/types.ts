@@ -64,6 +64,8 @@ export interface PolicySpec {
   cooldown: number;
   duration: number;
   effects: Effects;
+  /** Expected macro outcomes shown to the learner; actual simulation uses transmissionEffects when provided. */
+  transmissionEffects?: Effects;
 }
 
 export interface ActiveImpulse {
