@@ -89,6 +89,8 @@ export default function App(){
       <section><Panel eyebrow="POLICY PREVIEW" title={selected?selected.label:'Select a policy'}><Preview policy={selected} now={econ}/></Panel></section>
     </section>
 
+    <section className="lab-grid learning-review-grid"><section><Panel eyebrow="LEARNING REVIEW" title="What did your decision do?"><LearningReviewPanel econ={econ}/></Panel></section><section><Panel eyebrow="DECISION MEMORY" title="What to watch next"><DecisionMemory econ={econ}/></Panel></section></section>
+
     <section className="lab-grid event-trend-grid">
       <section><Panel eyebrow="EVENT ENGINE" title="What is changing?">{econ.activeEvents.filter(e=>e.status==='active').slice(0,2).map(e=><EventCard key={e.id} event={e} onPolicy={()=>{const p=POLICIES.find(x=>e.responsePolicyIds.includes(x.id));if(p){setTab(p.tab);setSelected(p)}}}/>)}{!econ.activeEvents.some(e=>e.status==='active')&&<div className="calm-state"><b>No active shock.</b><span>Even a stable economy keeps generating signals and trade-offs.</span></div>}</Panel></section>
       <section><Panel eyebrow="MACRO TRENDS" title="Where the economy has been"><MultiChart econ={econ}/></Panel></section>
@@ -150,6 +152,24 @@ function Preview({policy,now}:{policy:PolicySpec|null;now:EconomySnapshot}){if(!
     <div className="preview-risk"><b>Main trade-off</b><span>{policy.tradeoff}</span></div>
   </div>
 }
-function Debrief({econ,policy}:{econ:EconomySnapshot;policy:PolicySpec|null}){return <div className="debrief"><div><span>LEARNING NOTE</span><p>{econ.lastLearningNote}</p></div><div className="debrief-grid"><div><small>Last policy</small><b>{policy?.label||'None'}</b></div><div><small>Macro risk</small><b>{econ.macroRisk.toFixed(0)}/100</b></div><div><small>Approval</small><b>{(econ.approval*100).toFixed(0)}/100</b></div></div></div>}
+function LearningReviewPanel({econ}:{econ:EconomySnapshot}){
+  const r=econ.lastLearningReview;
+  if(!r)return <div className="empty-state">Enact a policy and advance one quarter. The game will turn the observed result into a learning review.</div>;
+  return <div className="learning-review">
+    <div className={'learning-outcome '+r.outcome}><span>ASSESSMENT</span><b>{r.outcome}</b><small>Observed after {r.lagQuarters}Q policy lag</small></div>
+    <p className="learning-result">{r.result}</p>
+    <div className="learning-section"><small>TRANSMISSION CHANNEL</small><p>{r.channel}</p></div>
+    <div className="learning-section"><small>WHAT ACTUALLY HAPPENED</small><p>{r.mechanism}</p></div>
+    <div className="learning-section"><small>TRADE-OFF</small><p>{r.tradeoff}</p></div>
+  </div>;
+}
+function DecisionMemory({econ}:{econ:EconomySnapshot}){
+  const r=econ.lastLearningReview;
+  return <div className="decision-memory">
+    <div className="memory-item"><small>Last decision</small><b>{r?.policyLabel||'No policy yet'}</b></div>
+    <div className="memory-item"><small>Learning note</small><p>{econ.lastLearningNote}</p></div>
+    <div className="memory-item"><small>Next move</small><p>{r?.nextStep||'First diagnose the dominant imbalance, then choose an instrument.'}</p></div>
+  </div>;
+}
 
 export {};
