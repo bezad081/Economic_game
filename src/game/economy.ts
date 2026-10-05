@@ -14,7 +14,7 @@ class RNG {
 
 const initial = (mode:GameMode):EconomySnapshot => ({
   year:2027, quarter:1, turn:0, mode,
-  realGDP:1018, potentialGDP:1000, consumption:620, investment:210, governmentSpending:190, netExports:-2, growth:.028,
+  realGDP:1018, potentialGDP:1000, consumption:620, investment:210, governmentSpending:190, netExports:-2, householdIncome:2.35, householdSavings:.58, firmSales:94, firmInvestment:4.5, capacityUtilization:.78, growth:.028,
   inflation:.034, coreInflation:.031, inflationExpected:.032, wageGrowth:.038, realWageGrowth:.004, unemployment:.055, outputGap:.018,
   policyRate:.045, realRate:.013, credibility:.74,
   debtRatio:.525, primaryBalance:-.018, fiscalDemand:0, sovereignSpread:.012, treasury:28, fxReserves:36, currentAccount:.010,
@@ -50,6 +50,11 @@ export class EconomyEngine {
     this.state.investment ??= this.state.realGDP*.21;
     this.state.governmentSpending ??= this.state.realGDP*.19;
     this.state.netExports ??= this.state.exports-this.state.imports;
+    this.state.householdIncome ??= 2.35;
+    this.state.householdSavings ??= .58;
+    this.state.firmSales ??= 94;
+    this.state.firmInvestment ??= 4.5;
+    this.state.capacityUtilization ??= .78;
     this.state.coreInflation ??= this.state.inflation*.9; this.state.wageGrowth ??= this.state.inflationExpected+.006; this.state.realWageGrowth ??= this.state.wageGrowth-this.state.inflation; this.state.outputGap ??= this.state.realGDP/this.state.potentialGDP-1;
     this.state.credibility ??= .72; this.state.sovereignSpread ??= .012; this.state.fxReserves ??= 36; this.state.currentAccount ??= (this.state.exports-this.state.imports)/Math.max(1,this.state.realGDP); this.state.activeEvents ??= []; this.state.eventHistory ??= []; this.state.lastLearningNote ??= 'Read the macro regime before choosing a policy.';
     if(this.state.totalEmployment<=0){ this.state.totalEmployment=this.state.firms.reduce((a,f)=>a+f.employees,0); this.state.averageWage=this.state.firms.reduce((a,f)=>a+f.employees*f.wage,0)/Math.max(1,this.state.totalEmployment); }
@@ -153,15 +158,19 @@ export class EconomyEngine {
     s.businessConfidence = clamp(s.businessConfidence + .10*(s.growth-.02) - .08*Math.max(0,s.inflation-.05) + (imp.confidence??0) + noise()*.008, .15,.95);
     s.consumerConfidence = clamp(.65*s.consumerConfidence + .35*(.72 - 1.8*Math.max(0,s.inflation-.025) - 1.2*Math.max(0,s.unemployment-.05) + .3*s.approval), .12,.95);
 
+    // Micro layer: firms and households form the bridge between policy and aggregate demand.
+    updateMicroeconomy(s,()=>this.rng.next());
     const outputGap=(s.realGDP/s.potentialGDP)-1;
     s.outputGap=outputGap;
     // National-account demand channels: policy affects components first; GDP responds to their combined movement.
     const consumptionGrowth = clamp(
       .0025 + .055*(s.consumerConfidence-.62) - .018*(s.realRate-.012) + .035*s.realWageGrowth
+      + .045*(s.householdIncome-2.35) + .025*(s.householdSavings-.58)
       + (imp.confidence??0)*.18 + noise()*.0015, -.035, .045
     );
     const investmentGrowth = clamp(
       .004 + .075*(s.businessConfidence-.62) + .11*(s.creditGrowth-.03) - .045*Math.max(0,s.realRate-.012)
+      + .018*(s.capacityUtilization-.78) + .012*(s.firmSales-94)
       + .025*(s.productivity-1) + noise()*.002, -.06, .075
     );
     const governmentGrowth = clamp(.001 + .18*s.fiscalDemand + noise()*.001, -.025, .035);
@@ -229,7 +238,6 @@ export class EconomyEngine {
 
     this.updateEvents();
     this.maybeGenerateEvent();
-    updateMicroeconomy(s,()=>this.rng.next());
     updateElection(s,()=>this.rng.next());
     if(s.bankruptcies>0) this.pushNews(`${s.bankruptcies} firm${s.bankruptcies===1?'':'s'} entered restructuring this quarter.`, 'bad');
     if(s.firmBirths>0) this.pushNews(`${s.firmBirths} new firm${s.firmBirths===1?'':'s'} entered the market.`, 'good');
@@ -438,7 +446,7 @@ export class EconomyEngine {
   private recordHistory(){
     const s=this.state;
     const h:HistoryPoint={
-      period:periodLabel(s.year,s.quarter),gdp:s.realGDP,consumption:s.consumption,investment:s.investment,governmentSpending:s.governmentSpending,netExports:s.netExports,growth:s.growth,inflation:s.inflation,coreInflation:s.coreInflation,unemployment:s.unemployment,wageGrowth:s.wageGrowth,
+      period:periodLabel(s.year,s.quarter),gdp:s.realGDP,consumption:s.consumption,investment:s.investment,governmentSpending:s.governmentSpending,netExports:s.netExports,householdIncome:s.householdIncome,householdSavings:s.householdSavings,firmSales:s.firmSales,firmInvestment:s.firmInvestment,capacityUtilization:s.capacityUtilization,growth:s.growth,inflation:s.inflation,coreInflation:s.coreInflation,unemployment:s.unemployment,wageGrowth:s.wageGrowth,
       debt:s.debtRatio,approval:s.approval,fci:s.fci,poverty:s.poverty,housingAffordability:s.housingAffordability,
       bankHealth:s.bankHealth,macroRisk:s.macroRisk,exchangeRate:s.exchangeRate,outputGap:s.outputGap,sovereignSpread:s.sovereignSpread,incumbentShare:s.election?.incumbentShare??.5,turnout:s.election?.turnout??.65
     };
