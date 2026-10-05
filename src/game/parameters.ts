@@ -18,6 +18,7 @@ export const TRANSMISSION = {
     investmentFromCredit: 0.055,
     confidenceToConsumption: 0.055,
     confidenceToInvestment: 0.075,
+    householdDemandToConsumption: 1.0,
     realRateConsumption: 0.018,
     realRateInvestment: 0.045,
     demandToOutput: 0.55,
