@@ -1,24 +1,78 @@
-# MACROSTATE V12 — Dynamic Policy Command
+# MACROSTATE — Economic Policy Simulation
 
-V12 turns the project into a more dynamic economic-policy simulation with a professional dashboard UX.
+MACROSTATE is an interactive economic-policy game focused on macroeconomic decision-making, policy trade-offs, shocks, and endogenous event chains.
 
-## Core loop
+## Project structure
 
-**Diagnose → Decide → Advance → React → Learn**
+The repository deliberately separates the two implementations:
 
-## What changed in V12
+```text
+Economic_game/
+├── src/                    # React + TypeScript web application
+│   ├── components/         # Dashboard and UI components
+│   ├── game/               # TypeScript economic engine and rules
+│   ├── phaser/             # Web rendering helpers
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── styles.css
+├── python/                 # Python/Pygame implementation
+│   ├── main.py             # Desktop game entry point
+│   ├── economy.py          # Economic simulation engine
+│   ├── visuals.py          # Pygame rendering and world visuals
+│   ├── validate_economy.py # Deterministic economic smoke tests
+│   ├── requirements.txt
+│   ├── requirements-web.txt
+│   └── run_game.bat
+├── .github/workflows/      # GitHub Pages deployment
+├── index.html
+├── package.json
+├── vite.config.ts
+└── tsconfig*.json
+```
 
-- Dynamic Live mode with 1× / 2× speed and automatic pause on critical events
-- Smarter policy advisor that scores instruments against current macro needs, active events, mission goals, policy capacity and trade-offs
-- Multi-stage event chains: unresolved shocks can propagate into follow-up banking, inflation, currency, debt or real-economy crises
-- Endogenous event generation from the state of the economy rather than pre-selected starting scenarios
-- More animated and polished analytical charts with reference lines, animated redraws, trend feedback and longer history
-- Left-side Core Systems monitor and right-side Advisor / Risk / Policy rail
-- UX and rendering optimization through memoized analytical components and CSS-native animations
-
-The project remains React + TypeScript + Vite and can be deployed with the existing GitHub Pages workflow.
+## Web version
 
 ```bash
 npm install
+npm run dev
+```
+
+Production build:
+
+```bash
 npm run build
 ```
+
+The web version is deployed to GitHub Pages through `.github/workflows/deploy.yml`.
+
+## Python version
+
+```bash
+python -m pip install -r python/requirements.txt
+python python/main.py
+```
+
+Windows users can run `python/run_game.bat`.
+
+Run the deterministic economic validation:
+
+```bash
+python python/validate_economy.py
+```
+
+## Core game loop
+
+**Diagnose → Decide → Advance → React → Learn**
+
+The simulation includes monetary and fiscal policy, inflation, growth, unemployment, debt, financial conditions, exchange-rate pressure, policy capacity, political constraints, shocks, and policy trade-offs.
+
+## Web gameplay
+
+- Mission Campaign and Sandbox modes
+- Live simulation with adjustable speed
+- Economic KPI dashboard
+- Policy advisor and decision console
+- Dynamic economic events and event chains
+- Analytical charts and policy transmission views
+- Quarterly learning/debrief system
+- Local save/continue state
