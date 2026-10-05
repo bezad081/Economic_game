@@ -5,17 +5,10 @@ import type { EconomySnapshot, GameMode, PolicySpec, Tab } from './game/types';
 
 const SAVE_KEY = 'macrostate-economic-lab-v1';
 const START_KEY = 'macrostate-economic-lab-started';
-type MetricKey = 'growth'|'inflation'|'unemployment'|'debt'|'policyRate'|'creditGrowth'|'exchangeRate'|'bankHealth';
+type MetricKey = 'growth'|'inflation'|'unemployment'|'debt'|'policyRate'|'creditGrowth'|'exchangeRate'|'bankHealth'|'outputGap'|'productivity'|'realWageGrowth'|'primaryBalance'|'treasury'|'businessConfidence'|'consumerConfidence'|'fxReserves'|'exports'|'imports'|'currentAccount'|'poverty'|'inequality';
 
 const cfg: Record<MetricKey,{label:string;format:(v:number)=>string}> = {
-  growth:{label:'GDP growth',format:v=>(v*100).toFixed(1)+'%'},
-  inflation:{label:'Inflation',format:v=>(v*100).toFixed(1)+'%'},
-  unemployment:{label:'Unemployment',format:v=>(v*100).toFixed(1)+'%'},
-  debt:{label:'Public debt',format:v=>(v*100).toFixed(0)+'% GDP'},
-  policyRate:{label:'Policy rate',format:v=>(v*100).toFixed(2)+'%'},
-  creditGrowth:{label:'Credit growth',format:v=>(v*100).toFixed(1)+'%'},
-  exchangeRate:{label:'FX index',format:v=>v.toFixed(2)},
-  bankHealth:{label:'Bank health',format:v=>(v*100).toFixed(0)}
+ growth:{label:'GDP growth',format:v=>(v*100).toFixed(1)+'%'}, inflation:{label:'Inflation',format:v=>(v*100).toFixed(1)+'%'}, unemployment:{label:'Unemployment',format:v=>(v*100).toFixed(1)+'%'}, debt:{label:'Debt / GDP',format:v=>(v*100).toFixed(0)+'%'}, policyRate:{label:'Policy rate',format:v=>(v*100).toFixed(2)+'%'}, creditGrowth:{label:'Credit growth',format:v=>(v*100).toFixed(1)+'%'}, exchangeRate:{label:'Exchange rate',format:v=>v.toFixed(2)}, bankHealth:{label:'Bank health',format:v=>(v*100).toFixed(0)}, outputGap:{label:'Output gap',format:v=>(v*100).toFixed(1)+'%'}, productivity:{label:'Productivity',format:v=>v.toFixed(1)}, realWageGrowth:{label:'Real wage growth',format:v=>(v*100).toFixed(1)+'%'}, primaryBalance:{label:'Primary balance',format:v=>(v*100).toFixed(1)+'%'}, treasury:{label:'Treasury',format:v=>v.toFixed(1)}, businessConfidence:{label:'Business confidence',format:v=>(v*100).toFixed(0)}, consumerConfidence:{label:'Consumer confidence',format:v=>(v*100).toFixed(0)}, fxReserves:{label:'FX reserves',format:v=>v.toFixed(1)}, exports:{label:'Exports',format:v=>v.toFixed(1)}, imports:{label:'Imports',format:v=>v.toFixed(1)}, currentAccount:{label:'Current account',format:v=>(v*100).toFixed(1)+'%'}, poverty:{label:'Poverty',format:v=>(v*100).toFixed(1)+'%'}, inequality:{label:'Inequality',format:v=>v.toFixed(2)}
 };
 const readSave=():EconomySnapshot|undefined=>{try{const r=localStorage.getItem(SAVE_KEY);return r?JSON.parse(r):undefined}catch{return undefined}};
 
@@ -31,7 +24,7 @@ export default function App(){
   const [tab,setTab]=useState<Tab>('Monetary');
   const [selected,setSelected]=useState<PolicySpec|null>(null);
   const [wire,setWire]=useState(false);
-  const [advisorOpen,setAdvisorOpen]=useState(false);
+  const [advisorOpen,setAdvisorOpen]=useState(false);\n  const [selectedMetric,setSelectedMetric]=useState<MetricKey>('inflation');
   const [toast,setToast]=useState('Read the indicators, diagnose the economy, then choose a policy.');
 
   const persist=(s:EconomySnapshot)=>{setEcon(s);localStorage.setItem(SAVE_KEY,JSON.stringify(s))};
@@ -55,47 +48,49 @@ export default function App(){
     </header>
 
     <section className="metrics-area">
-  <div className="metrics-grid">{(['growth','inflation','unemployment','debt'] as MetricKey[]).map(k=><MetricCard key={k} k={k} econ={econ}/>)}</div>
-  <div className="secondary-strip">
-    <span>Policy rate <b>{(econ.policyRate*100).toFixed(2)}%</b></span>
-    <span>Credit growth <b>{(econ.creditGrowth*100).toFixed(1)}%</b></span>
-    <span>FX index <b>{econ.exchangeRate.toFixed(2)}</b></span>
-    <span>Bank health <b>{(econ.bankHealth*100).toFixed(0)}</b></span>
-    <span>Macro risk <b>{econ.macroRisk.toFixed(0)}/100</b></span>
-  </div>
-</section>
+      <div className="dashboard-title"><div><small>ECONOMIC DASHBOARD</small><h1>The economy at a glance</h1></div><span>Click an indicator to inspect its drivers.</span></div>
+      <div className="metric-groups">
+        <MetricGroup title="Macro" keys={['growth','inflation','unemployment','outputGap','productivity','realWageGrowth']} econ={econ} selected={selectedMetric} onSelect={setSelectedMetric}/>
+        <MetricGroup title="Fiscal" keys={['debt','primaryBalance','treasury']} econ={econ} selected={selectedMetric} onSelect={setSelectedMetric}/>
+        <MetricGroup title="Financial" keys={['policyRate','creditGrowth','bankHealth','businessConfidence','consumerConfidence']} econ={econ} selected={selectedMetric} onSelect={setSelectedMetric}/>
+        <MetricGroup title="External" keys={['exchangeRate','fxReserves','exports','imports','currentAccount']} econ={econ} selected={selectedMetric} onSelect={setSelectedMetric}/>
+        <MetricGroup title="Society" keys={['poverty','inequality']} econ={econ} selected={selectedMetric} onSelect={setSelectedMetric}/>
+      </div>
+    </section>
 
     <main className="lab-grid">
-      {econ.activeEvents.filter(e=>e.status==='active').slice(0,1).map(e=><div className={'event-alert severity-'+e.severity} key={e.id}>
-        <div><span>NEW DEVELOPMENT · SEVERITY {e.severity}</span><b>{e.title}</b><p>{e.description}</p></div>
-        <button onClick={()=>{const p=POLICIES.find(x=>e.responsePolicyIds.includes(x.id));if(p){setTab(p.tab);setSelected(p)}}}>Inspect response →</button>
-      </div>)}
-      <section className="state-column">
-        <Panel eyebrow="ECONOMIC STATE" title="What is happening?">
-          <div className="regime-card"><span className="regime-dot"/><div><b>{econ.regime}</b><p>{regimeText(econ)}</p></div></div>
-          <SparkChart econ={econ} metric="growth"/><SparkChart econ={econ} metric="inflation"/><SparkChart econ={econ} metric="unemployment"/>
-          <div className="signal-list">
-            <Signal label="Credit conditions" value={(econ.creditGrowth*100).toFixed(1)+'%'} status={econ.creditGrowth<0?'weak':'normal'}/>
-            <Signal label="FX pressure" value={econ.exchangeRate.toFixed(2)} status={econ.exchangeRate>1.2?'high':'normal'}/>
-            <Signal label="Banking system" value={(econ.bankHealth*100).toFixed(0)+'/100'} status={econ.bankHealth<.55?'stress':'normal'}/>
+      <section className="map-column">
+        <Panel eyebrow="ECONOMIC SYSTEM MAP" title="How the economy moves">
+          <div className="economic-map">
+            <div className="map-node map-policy"><b>{selected?selected.label:'POLICY INSTRUMENTS'}</b><span>{selected?'Selected policy':'Monetary · Fiscal · Structural · Trade'}</span></div>
+            <div className="map-node map-finance"><b>FINANCE</b><span>Rates · Credit · Banks</span></div>
+            <div className="map-node map-demand"><b>DEMAND</b><span>Consumption · Investment · Government</span></div>
+            <div className="map-node map-supply"><b>SUPPLY</b><span>Productivity · Capacity · Energy</span></div>
+            <div className="map-node map-output"><b>OUTPUT</b><span>GDP · Output gap</span></div>
+            <div className="map-node map-jobs"><b>EMPLOYMENT</b><span>Jobs · Wages</span></div>
+            <div className="map-node map-prices"><b>PRICES</b><span>Inflation · Expectations</span></div>
+            <div className="map-node map-people"><b>HOUSEHOLDS & FIRMS</b><span>Income · Welfare · Confidence</span></div>
+            <div className="map-flow flow-1">↓</div><div className="map-flow flow-2">→</div><div className="map-flow flow-3">↓</div><div className="map-flow flow-4">→</div>
+            <div className="map-focus"><b>{cfg[selectedMetric].label}</b><span>{metricExplanation(selectedMetric,econ)}</span></div>
           </div>
+          <div className="metric-inspector"><small>WHY IS IT MOVING?</small><h3>{cfg[selectedMetric].label}: {formatMetric(econ,selectedMetric)}</h3><p>{metricExplanation(selectedMetric,econ)}</p><div className="inspector-chain"><span>Drivers</span><b>→</b><span>Transmission</span><b>→</b><span>Outcome</span></div></div>
         </Panel>
-      </section>
-
-      <section className="center-column">
-        <Panel eyebrow="ECONOMIC TRANSMISSION" title="Why is it happening?"><Transmission econ={econ} policy={selected}/></Panel>
-        <Panel eyebrow="MACRO TRENDS" title="The economy over time"><MultiChart econ={econ}/></Panel>
-        <Panel eyebrow="POLICY RESULT" title="What did the last decision do?"><Debrief econ={econ} policy={selected}/></Panel>
       </section>
 
       <aside className="decision-column">
-        <Panel eyebrow="POLICY DESK" title="Choose an action">
-          <div className="tab-row">{(['Monetary','Fiscal','Structural','Trade','Emergency'] as Tab[]).map(t=><button key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}>{t}</button>)}</div>
-          <div className="policy-list">{policies.slice(0,8).map(p=><PolicyCard key={p.id} policy={p} econ={econ} selected={selected?.id===p.id} onSelect={()=>setSelected(p)} onApply={()=>enact(p)}/>)}</div>
-        </Panel>
-        <Panel eyebrow="POLICY PREVIEW" title={selected?selected.label:'Select a policy'}><Preview policy={selected} now={econ}/></Panel>
+        <Panel eyebrow="POLICY DESK" title="Choose an action"><div className="tab-row">{(['Monetary','Fiscal','Structural','Trade','Emergency'] as Tab[]).map(t=><button key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}>{t}</button>)}</div><div className="policy-list">{policies.map(p=><PolicyCard key={p.id} policy={p} econ={econ} selected={selected?.id===p.id} onSelect={()=>setSelected(p)} onApply={()=>enact(p)}/>)}</div></Panel>
       </aside>
     </main>
+
+    <section className="lab-grid lower-lab-grid">
+      <section className="diagnosis-panel"><Panel eyebrow="ECONOMIC DIAGNOSIS" title={diagnosisTitle(econ)}><div className="diagnosis-copy"><b>{diagnosisLabel(econ)}</b><p>{diagnosisText(econ)}</p><div className="diagnosis-points"><span>Demand: {demandSignal(econ)}</span><span>Finance: {financeSignal(econ)}</span><span>Supply: {supplySignal(econ)}</span></div></div></Panel></section>
+      <section><Panel eyebrow="POLICY PREVIEW" title={selected?selected.label:'Select a policy'}><Preview policy={selected} now={econ}/></Panel></section>
+    </section>
+
+    <section className="lab-grid event-trend-grid">
+      <section><Panel eyebrow="EVENT ENGINE" title="What is changing?">{econ.activeEvents.filter(e=>e.status==='active').slice(0,2).map(e=><EventCard key={e.id} event={e} onPolicy={()=>{const p=POLICIES.find(x=>e.responsePolicyIds.includes(x.id));if(p){setTab(p.tab);setSelected(p)}}}/>)}{!econ.activeEvents.some(e=>e.status==='active')&&<div className="calm-state"><b>No active shock.</b><span>Even a stable economy keeps generating signals and trade-offs.</span></div>}</Panel></section>
+      <section><Panel eyebrow="MACRO TRENDS" title="Where the economy has been"><MultiChart econ={econ}/></Panel></section>
+    </section>
 
     <footer className="lab-footer"><div><span className="footer-dot"/><b>{econ.activeEvents.filter(e=>e.status==='active').length?'Active events':'Economy stable'}</b></div><div className="timeline">{econ.history.slice(-7).map(h=><span key={h.period}>{h.period.replace(' ','·')}</span>)}</div><button onClick={()=>{setLive(false);setToast('Simulation paused. Inspect the transmission map.')}}>Pause & inspect</button><button onClick={reset}>New simulation</button></footer>
 
@@ -110,6 +105,16 @@ function Landing({hasSave,onStart,onContinue}:{hasSave:boolean;onStart:(m:GameMo
 }
 function Intro({onDone}:{onDone:()=>void}){useEffect(()=>{const id=window.setTimeout(onDone,3600);return()=>window.clearTimeout(id)},[onDone]);return <div className="intro"><div className="intro-grid"/><div className="intro-core"><div className="intro-mark">M</div><div className="intro-title">MACROSTATE</div><div className="intro-sub">ECONOMIC POLICY LAB</div><div className="intro-chain"><span>SHOCK</span><i/><span>POLICY</span><i/><span>OUTCOME</span></div></div></div>}
 
+function MetricGroup({title,keys,econ,selected,onSelect}:{title:string;keys:MetricKey[];econ:EconomySnapshot;selected:MetricKey;onSelect:(k:MetricKey)=>void}){return <div className="metric-group"><div className="group-label">{title}</div><div className="metrics-row">{keys.map(k=><button key={k} className={'metric-card '+(selected===k?'selected':'')} onClick={()=>onSelect(k)}><span>{cfg[k].label}</span><strong>{formatMetric(econ,k)}</strong><small>{metricDelta(econ,k)}</small></button>)}</div></div>}
+function formatMetric(e:EconomySnapshot,k:MetricKey){const v=k==='debt'?e.debtRatio:(e as any)[k];return cfg[k].format(Number(v))}
+function metricDelta(e:EconomySnapshot,k:MetricKey){const h=e.history;const v=Number(k==='debt'?e.debtRatio:(e as any)[k]);const prev=h.length>1?Number(k==='debt'?h[h.length-2].debt:(h[h.length-2] as any)[k]):v;return v>prev?'↑ vs previous':v<prev?'↓ vs previous':'→ stable'}
+function diagnosisTitle(e:EconomySnapshot){if(e.inflation>.065&&e.growth>.03)return 'The economy is overheating';if(e.inflation>.06&&e.growth<.015)return 'Stagflation pressure is building';if(e.bankHealth<.55)return 'Financial transmission is impaired';if(e.unemployment>.08&&e.outputGap<-.03)return 'Demand is too weak';return 'The economy is mixed but manageable'}
+function diagnosisLabel(e:EconomySnapshot){if(e.inflation>.065)return 'DEMAND / PRICE PRESSURE';if(e.bankHealth<.55)return 'FINANCIAL STRESS';if(e.unemployment>.08)return 'RECESSION RISK';return 'MONITOR THE IMBALANCES'}
+function diagnosisText(e:EconomySnapshot){if(e.inflation>.065)return 'Demand is running ahead of productive capacity. Inflation expectations and credit conditions should be watched before adding more stimulus.';if(e.inflation>.06&&e.growth<.015)return 'Prices are elevated while activity is weak. Broad demand management has a difficult trade-off here.';if(e.bankHealth<.55)return 'Weak bank balance sheets can block normal monetary transmission and turn financial stress into weaker investment and jobs.';if(e.unemployment>.08)return 'Economic slack is rising. Support demand carefully while protecting inflation credibility.';return 'No single imbalance dominates. The main task is to identify which pressure is becoming important next.'}
+function demandSignal(e:EconomySnapshot){return e.outputGap>.02?'overheating':e.outputGap<-.02?'weak':'balanced'}
+function financeSignal(e:EconomySnapshot){return e.bankHealth<.55?'stressed':e.creditGrowth>.06?'expansionary':'normal'}
+function supplySignal(e:EconomySnapshot){return e.productivity>90?'strong':e.energySecurity<.55?'constrained':'steady'}
+function metricExplanation(k:MetricKey,e:EconomySnapshot){if(k==='inflation')return e.inflation>.06?'Demand, wages and expectations are keeping price pressure persistent.':'Inflation is being shaped by demand, wages, expectations and supply conditions.';if(k==='growth')return 'Growth reflects demand, financial conditions and productive capacity, with policy effects arriving through lags.';if(k==='unemployment')return 'Jobs respond to output and firms’ expectations with a delay, so today’s policy affects labor markets over several quarters.';if(k==='creditGrowth')return 'Credit links interest rates and bank health to household consumption and firm investment.';if(k==='debt')return 'Debt changes with the primary balance, growth and the cost of government financing.';return 'This indicator is connected to several parts of the economy. Select another indicator to inspect a different transmission channel.'}
 function Panel({eyebrow,title,children}:{eyebrow:string;title:string;children:React.ReactNode}){return <section className="panel"><div className="panel-head"><div><small>{eyebrow}</small><h2>{title}</h2></div></div>{children}</section>}
 function metricValue(h:any,k:MetricKey){return k==='debt'?h.debt:h[k]}
 function MetricCard({k,econ}:{k:MetricKey;econ:EconomySnapshot}){const v=k==='debt'?econ.debtRatio:econ[k];const hist=econ.history.slice(-2);const prev=hist.length>1?metricValue(hist[0],k):v;const d=v-prev;return <div className="metric-card"><span>{cfg[k].label}</span><strong>{cfg[k].format(v)}</strong><small className={tone(k,v)}>{d>0?'↑':d<0?'↓':'→'} {d===0?'stable':'vs previous'}</small></div>}
