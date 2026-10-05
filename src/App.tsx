@@ -31,6 +31,7 @@ export default function App(){
   const [tab,setTab]=useState<Tab>('Monetary');
   const [selected,setSelected]=useState<PolicySpec|null>(null);
   const [wire,setWire]=useState(false);
+  const [advisorOpen,setAdvisorOpen]=useState(false);
   const [toast,setToast]=useState('Read the indicators, diagnose the economy, then choose a policy.');
 
   const persist=(s:EconomySnapshot)=>{setEcon(s);localStorage.setItem(SAVE_KEY,JSON.stringify(s))};
@@ -50,20 +51,34 @@ export default function App(){
     <header className="lab-header">
       <div className="brand"><div className="brand-mark">M</div><div><strong>MACROSTATE</strong><span>ECONOMIC POLICY LAB</span></div></div>
       <div className="header-context"><span>Q{econ.quarter} · {econ.year}</span><b>{econ.regime}</b></div>
-      <div className="header-actions"><button className={live?'status-live':''} onClick={()=>setLive(v=>!v)}><i/> {live?'Running':'Paused'}</button><button className={speed===1?'selected':''} onClick={()=>setSpeed(1)}>1×</button><button className={speed===2?'selected':''} onClick={()=>setSpeed(2)}>2×</button><button onClick={()=>setWire(true)}>Economic wire</button><button className="primary" onClick={advance}>Advance quarter →</button></div>
+      <div className="header-actions"><button className={live?'status-live':''} onClick={()=>setLive(v=>!v)}><i/> {live?'Running':'Paused'}</button><button onClick={()=>setAdvisorOpen(true)}>Advisor</button><button onClick={()=>setWire(true)}>Wire</button><button className="primary" onClick={advance}>Advance quarter →</button></div>
     </header>
 
-    <section className="metrics-grid">{(['growth','inflation','unemployment','debt','policyRate','creditGrowth','exchangeRate','bankHealth'] as MetricKey[]).map(k=><MetricCard key={k} k={k} econ={econ}/>)}</section>
+    <section className="metrics-area">
+  <div className="metrics-grid">{(['growth','inflation','unemployment','debt'] as MetricKey[]).map(k=><MetricCard key={k} k={k} econ={econ}/>)}</div>
+  <div className="secondary-strip">
+    <span>Policy rate <b>{(econ.policyRate*100).toFixed(2)}%</b></span>
+    <span>Credit growth <b>{(econ.creditGrowth*100).toFixed(1)}%</b></span>
+    <span>FX index <b>{econ.exchangeRate.toFixed(2)}</b></span>
+    <span>Bank health <b>{(econ.bankHealth*100).toFixed(0)}</b></span>
+    <span>Macro risk <b>{econ.macroRisk.toFixed(0)}/100</b></span>
+  </div>
+</section>
 
     <main className="lab-grid">
+      {econ.activeEvents.filter(e=>e.status==='active').slice(0,1).map(e=><div className={'event-alert severity-'+e.severity} key={e.id}>
+        <div><span>NEW DEVELOPMENT · SEVERITY {e.severity}</span><b>{e.title}</b><p>{e.description}</p></div>
+        <button onClick={()=>{const p=POLICIES.find(x=>e.responsePolicyIds.includes(x.id));if(p){setTab(p.tab);setSelected(p)}}}>Inspect response →</button>
+      </div>)}
       <section className="state-column">
         <Panel eyebrow="ECONOMIC STATE" title="What is happening?">
           <div className="regime-card"><span className="regime-dot"/><div><b>{econ.regime}</b><p>{regimeText(econ)}</p></div></div>
           <SparkChart econ={econ} metric="growth"/><SparkChart econ={econ} metric="inflation"/><SparkChart econ={econ} metric="unemployment"/>
-        </Panel>
-        <Panel eyebrow="EVENTS" title="What changed?">
-          {econ.activeEvents.filter(e=>e.status==='active').slice(0,3).map(e=><EventCard key={e.id} event={e} onPolicy={()=>{const p=POLICIES.find(x=>e.responsePolicyIds.includes(x.id));if(p){setTab(p.tab);setSelected(p)}}}/>)}
-          {!econ.activeEvents.some(e=>e.status==='active')&&<div className="empty-state">No acute event. A calm economy still needs monitoring.</div>}
+          <div className="signal-list">
+            <Signal label="Credit conditions" value={(econ.creditGrowth*100).toFixed(1)+'%'} status={econ.creditGrowth<0?'weak':'normal'}/>
+            <Signal label="FX pressure" value={econ.exchangeRate.toFixed(2)} status={econ.exchangeRate>1.2?'high':'normal'}/>
+            <Signal label="Banking system" value={(econ.bankHealth*100).toFixed(0)+'/100'} status={econ.bankHealth<.55?'stress':'normal'}/>
+          </div>
         </Panel>
       </section>
 
@@ -78,7 +93,6 @@ export default function App(){
           <div className="tab-row">{(['Monetary','Fiscal','Structural','Trade','Emergency'] as Tab[]).map(t=><button key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}>{t}</button>)}</div>
           <div className="policy-list">{policies.slice(0,8).map(p=><PolicyCard key={p.id} policy={p} econ={econ} selected={selected?.id===p.id} onSelect={()=>setSelected(p)} onApply={()=>enact(p)}/>)}</div>
         </Panel>
-        <Panel eyebrow="ADVISOR" title="Cabinet reasoning">{recs.slice(0,3).map(r=><AdvisorCard key={r.id} rec={r} onApply={()=>enact(r.policy)}/>)}</Panel>
         <Panel eyebrow="POLICY PREVIEW" title={selected?selected.label:'Select a policy'}><Preview policy={selected} now={econ}/></Panel>
       </aside>
     </main>
@@ -86,6 +100,7 @@ export default function App(){
     <footer className="lab-footer"><div><span className="footer-dot"/><b>{econ.activeEvents.filter(e=>e.status==='active').length?'Active events':'Economy stable'}</b></div><div className="timeline">{econ.history.slice(-7).map(h=><span key={h.period}>{h.period.replace(' ','·')}</span>)}</div><button onClick={()=>{setLive(false);setToast('Simulation paused. Inspect the transmission map.')}}>Pause & inspect</button><button onClick={reset}>New simulation</button></footer>
 
     {wire&&<div className="drawer-backdrop" onClick={()=>setWire(false)}><aside className="wire-panel" onClick={e=>e.stopPropagation()}><div className="drawer-head"><div><small>ECONOMIC WIRE</small><h2>Recent developments</h2></div><button onClick={()=>setWire(false)}>×</button></div>{econ.news.slice().reverse().map(n=><article className={n.tone} key={n.id}><span>{n.period}</span><p>{n.text}</p></article>)}</aside></div>}
+    {advisorOpen&&<div className="drawer-backdrop" onClick={()=>setAdvisorOpen(false)}><aside className="wire-panel advisor-drawer" onClick={e=>e.stopPropagation()}><div className="drawer-head"><div><small>ADVISOR</small><h2>Cabinet reasoning</h2></div><button onClick={()=>setAdvisorOpen(false)}>×</button></div>{recs.slice(0,4).map(r=><AdvisorCard key={r.id} rec={r} onApply={()=>{setAdvisorOpen(false);enact(r.policy)}}/>)}</aside></div>}
     <div className="toast">{toast}</div>
   </div>;
 }
@@ -108,10 +123,11 @@ function Transmission({econ,policy}:{econ:EconomySnapshot;policy:PolicySpec|null
 function pressure(e:EconomySnapshot){if(e.inflation>.06)return 'Inflation persistence';if(e.unemployment>.08)return 'Labor weakness';if(e.bankHealth<.55)return 'Financial stress';if(e.debtRatio>.9)return 'Fiscal pressure';if(e.growth>.05)return 'Overheating risk';return 'Balanced conditions'}
 function regimeText(e:EconomySnapshot){if(e.regime==='Recession')return 'Demand is weak and labor slack is rising.';if(e.regime==='Stagflation')return 'Supply pressure and weak activity are colliding.';if(e.regime==='Overheating')return 'Demand is running ahead of capacity.';if(e.regime==='Financial Stress')return 'The banking channel is impairing normal transmission.';return 'No single imbalance dominates. Watch the emerging pressures.'}
 
+function Signal({label,value,status}:{label:string;value:string;status:'normal'|'weak'|'high'|'stress'}){return <div className="signal"><span>{label}</span><b>{value}</b><i className={status}>{status}</i></div>}
 function EventCard({event,onPolicy}:{event:any;onPolicy:()=>void}){return <article className={'event-card severity-'+event.severity}><span>SEVERITY {event.severity}</span><h3>{event.title}</h3><p>{event.description}</p><button onClick={onPolicy}>View response →</button></article>}
 function PolicyCard({policy,econ,selected,onSelect,onApply}:{policy:PolicySpec;econ:EconomySnapshot;selected:boolean;onSelect:()=>void;onApply:()=>void}){const locked=(econ.cooldowns[policy.id]||0)>0||econ.policyCapacity<policy.capacityCost||econ.politicalCapital<policy.politicalCost;return <article className={'policy-card '+(selected?'selected':'')} onClick={onSelect}><div className="policy-top"><div><span>{policy.tab}</span><h3>{policy.label}</h3></div><b>{policy.duration}Q · lag {policy.tab==='Monetary'?1:policy.tab==='Fiscal'?1:policy.tab==='Trade'?2:policy.tab==='Structural'?3:1}Q</b></div><p>{policy.description}</p><div className="tradeoff"><span>Trade-off</span>{policy.tradeoff}</div><div className="policy-meta"><span>Capacity −{policy.capacityCost}</span><span>Political −{policy.politicalCost}</span></div><button disabled={locked} onClick={e=>{e.stopPropagation();onApply()}}>{locked?'Unavailable':'Apply policy'}</button></article>}
 function AdvisorCard({rec,onApply}:{rec:any;onApply:()=>void}){return <article className="advisor-card"><div className="advisor-role">{rec.role}</div><h3>{rec.title}</h3><p>{rec.rationale}</p><div className="advisor-watch"><b>Watch:</b> {rec.watch||'Observe the next transmission step before acting again.'}</div><button onClick={onApply}>Open policy →</button></article>}
-function Preview({policy,now}:{policy:PolicySpec|null;now:EconomySnapshot}){if(!policy)return <div className="empty-state">Select a policy to inspect its trade-off before committing.</div>;const sim=new EconomyEngine(now.mode,now);const r=sim.enact(policy.id);if(!r.ok)return <div className="empty-state">{r.reason}</div>;const out:EconomySnapshot[]=[];for(let i=0;i<4;i++){sim.stepQuarter();out.push(sim.snapshot())}const f=out[3];return <div className="preview"><div className="preview-policy"><b>{policy.label}</b><span>4-quarter model preview</span></div>{[['GDP growth',now.growth,f.growth],['Inflation',now.inflation,f.inflation],['Unemployment',now.unemployment,f.unemployment],['Debt ratio',now.debtRatio,f.debtRatio]].map(x=><div className="preview-row" key={x[0] as string}><span>{x[0]}</span><b>{(Number(x[1])*100).toFixed(1)}% → {(Number(x[2])*100).toFixed(1)}%</b></div>)}<div className="preview-risk"><b>Main trade-off</b><span>{policy.tradeoff}</span></div></div>}
+function Preview({policy,now}:{policy:PolicySpec|null;now:EconomySnapshot}){if(!policy)return <div className="empty-state">Select a policy to inspect its trade-off before committing.</div>;const sim=new EconomyEngine(now.mode,now);const r=sim.enact(policy.id);if(!r.ok)return <div className="empty-state">{r.reason}</div>;const out:EconomySnapshot[]=[];for(let i=0;i<8;i++){sim.stepQuarter();out.push(sim.snapshot())}const horizons=[{q:1,s:out[0]},{q:2,s:out[1]},{q:4,s:out[3]},{q:8,s:out[7]}];return <div className="preview"><div className="preview-policy"><b>{policy.label}</b><span>model path</span></div><div className="forecast-head"><span>Indicator</span>{horizons.map(h=><b key={h.q}>Q+{h.q}</b>)}</div>{[['GDP growth','growth'],['Inflation','inflation'],['Unemployment','unemployment'],['Debt ratio','debtRatio']].map(([label,key])=><div className="forecast-row" key={label as string}><span>{label}</span>{horizons.map(h=><b key={h.q}>{(Number((h.s as any)[key])*100).toFixed(1)}%</b>)}</div>)}<div className="preview-risk"><b>Main trade-off</b><span>{policy.tradeoff}</span></div></div>}
 function Debrief({econ,policy}:{econ:EconomySnapshot;policy:PolicySpec|null}){return <div className="debrief"><div><span>LEARNING NOTE</span><p>{econ.lastLearningNote}</p></div><div className="debrief-grid"><div><small>Last policy</small><b>{policy?.label||'None'}</b></div><div><small>Macro risk</small><b>{econ.macroRisk.toFixed(0)}/100</b></div><div><small>Approval</small><b>{(econ.approval*100).toFixed(0)}/100</b></div></div></div>}
 
 export {};
