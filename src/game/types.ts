@@ -153,6 +153,10 @@ export interface EconomySnapshot {
   mode: GameMode;
   realGDP: number;
   potentialGDP: number;
+  consumption: number;
+  investment: number;
+  governmentSpending: number;
+  netExports: number;
   growth: number;
   inflation: number;
   coreInflation: number;
