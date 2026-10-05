@@ -49,7 +49,7 @@ export interface CabinetAdvice {
 export type EffectKey =
   | 'growth' | 'inflation' | 'unemployment' | 'debt' | 'approval' | 'bank'
   | 'fx' | 'credit' | 'tech' | 'energy' | 'emissions' | 'housingSupply'
-  | 'poverty' | 'inequality' | 'corruption' | 'treasury' | 'confidence';
+  | 'poverty' | 'inequality' | 'corruption' | 'treasury' | 'confidence' | 'fiscalDemand';
 
 export type Effects = Partial<Record<EffectKey, number>>;
 
@@ -64,6 +64,8 @@ export interface PolicySpec {
   cooldown: number;
   duration: number;
   effects: Effects;
+  /** Expected macro outcomes shown to the learner; actual simulation uses transmissionEffects when provided. */
+  transmissionEffects?: Effects;
 }
 
 export interface ActiveImpulse {
@@ -71,6 +73,7 @@ export interface ActiveImpulse {
   label: string;
   age: number;
   duration: number;
+  lag?: number;
   effects: Effects;
 }
 
@@ -163,6 +166,7 @@ export interface EconomySnapshot {
   credibility: number;
   debtRatio: number;
   primaryBalance: number;
+  fiscalDemand: number;
   sovereignSpread: number;
   treasury: number;
   fxReserves: number;
