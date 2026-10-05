@@ -49,7 +49,7 @@ export interface CabinetAdvice {
 export type EffectKey =
   | 'growth' | 'inflation' | 'unemployment' | 'debt' | 'approval' | 'bank'
   | 'fx' | 'credit' | 'tech' | 'energy' | 'emissions' | 'housingSupply'
-  | 'poverty' | 'inequality' | 'corruption' | 'treasury' | 'confidence';
+  | 'poverty' | 'inequality' | 'corruption' | 'treasury' | 'confidence' | 'fiscalDemand';
 
 export type Effects = Partial<Record<EffectKey, number>>;
 
@@ -165,6 +165,7 @@ export interface EconomySnapshot {
   credibility: number;
   debtRatio: number;
   primaryBalance: number;
+  fiscalDemand: number;
   sovereignSpread: number;
   treasury: number;
   fxReserves: number;
