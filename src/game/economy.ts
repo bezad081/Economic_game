@@ -438,7 +438,7 @@ export class EconomyEngine {
   private recordHistory(){
     const s=this.state;
     const h:HistoryPoint={
-      period:periodLabel(s.year,s.quarter),gdp:s.realGDP,growth:s.growth,inflation:s.inflation,coreInflation:s.coreInflation,unemployment:s.unemployment,wageGrowth:s.wageGrowth,
+      period:periodLabel(s.year,s.quarter),gdp:s.realGDP,consumption:s.consumption,investment:s.investment,governmentSpending:s.governmentSpending,netExports:s.netExports,growth:s.growth,inflation:s.inflation,coreInflation:s.coreInflation,unemployment:s.unemployment,wageGrowth:s.wageGrowth,
       debt:s.debtRatio,approval:s.approval,fci:s.fci,poverty:s.poverty,housingAffordability:s.housingAffordability,
       bankHealth:s.bankHealth,macroRisk:s.macroRisk,exchangeRate:s.exchangeRate,outputGap:s.outputGap,sovereignSpread:s.sovereignSpread,incumbentShare:s.election?.incumbentShare??.5,turnout:s.election?.turnout??.65
     };
