@@ -80,7 +80,7 @@ export class EconomyEngine {
     this.state.policyCapacity -= policy.capacityCost;
     this.state.politicalCapital = clamp(this.state.politicalCapital - policy.politicalCost, 0, 100);
     this.state.cooldowns[id] = policy.cooldown;
-    const impulse:ActiveImpulse = { id:`${id}-${Date.now()}-${Math.floor(this.rng.next()*1e6)}`, label:policy.label, age:0, duration:policy.duration, effects:{...policy.effects} };
+    const impulse:ActiveImpulse = { id:`${id}-${Date.now()}-${Math.floor(this.rng.next()*1e6)}`, label:policy.label, age:0, duration:policy.duration, effects:{...(policy.transmissionEffects ?? policy.effects)} };
     this.state.impulses.push(impulse);
     if (id === 'rate_up') this.state.policyRate = clamp(this.state.policyRate + .005, -.01, .25);
     if (id === 'rate_down') this.state.policyRate = clamp(this.state.policyRate - .005, -.01, .25);
