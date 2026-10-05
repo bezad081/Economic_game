@@ -1,6 +1,7 @@
 import { POLICIES, policyById } from './policies';
 import type { ActiveImpulse, AdvisorRecommendation, EconomySnapshot, Effects, GameMode, HistoryPoint, MacroEvent, Mission, NewsItem, PolicySpec } from './types';
 import { cabinetAdvice, seedFirms, seedHouseholds, updateElection, updateMicroeconomy } from './micro';
+import { policyLag, transmitDemand } from './transmission';
 
 const clamp = (x:number, lo:number, hi:number) => Math.max(lo, Math.min(hi, x));
 const add = (e:Effects, k:keyof Effects, v:number) => { e[k] = (e[k] ?? 0) + v; };
@@ -90,7 +91,7 @@ export class EconomyEngine {
     this.state.policyCapacity -= policy.capacityCost;
     this.state.politicalCapital = clamp(this.state.politicalCapital - policy.politicalCost, 0, 100);
     this.state.cooldowns[id] = policy.cooldown;
-    const impulse:ActiveImpulse = { id:`${id}-${Date.now()}-${Math.floor(this.rng.next()*1e6)}`, label:policy.label, age:0, duration:policy.duration, effects:{...(policy.transmissionEffects ?? policy.effects)}, lag: policy.tab==='Monetary'?1:policy.tab==='Fiscal'?1:policy.tab==='Trade'?2:policy.tab==='Structural'?3:1 };
+    const impulse:ActiveImpulse = { id:`${id}-${Date.now()}-${Math.floor(this.rng.next()*1e6)}`, label:policy.label, age:0, duration:policy.duration, effects:{...(policy.transmissionEffects ?? policy.effects)}, lag: policyLag(policy.tab) };
     this.state.impulses.push(impulse);
     if (id === 'rate_up') this.state.policyRate = clamp(this.state.policyRate + .005, -.01, .25);
     if (id === 'rate_down') this.state.policyRate = clamp(this.state.policyRate - .005, -.01, .25);
@@ -154,26 +155,27 @@ export class EconomyEngine {
     const potentialQ = .0045 + (s.productivity-1)*.0015 + Math.max(0,s.technology-70)*.000025;
     s.potentialGDP *= (1 + potentialQ);
 
-    s.creditGrowth = clamp(.032 - .52*(s.policyRate-.04) + .075*(s.bankHealth-.7) + (imp.credit??0) + noise()*.004, -.12,.20);
+    s.creditGrowth = clamp(.032 - .52*(s.policyRate-.04) + .075*(s.bankHealth-.7) + tx.credit + noise()*.004, -.12,.20);
     s.businessConfidence = clamp(s.businessConfidence + .10*(s.growth-.02) - .08*Math.max(0,s.inflation-.05) + (imp.confidence??0) + noise()*.008, .15,.95);
     s.consumerConfidence = clamp(.65*s.consumerConfidence + .35*(.72 - 1.8*Math.max(0,s.inflation-.025) - 1.2*Math.max(0,s.unemployment-.05) + .3*s.approval), .12,.95);
 
     // Micro layer: firms and households form the bridge between policy and aggregate demand.
     updateMicroeconomy(s,()=>this.rng.next());
+    const tx=transmitDemand(s,imp);
     const outputGap=(s.realGDP/s.potentialGDP)-1;
     s.outputGap=outputGap;
     // National-account demand channels: policy affects components first; GDP responds to their combined movement.
     const consumptionGrowth = clamp(
       .0025 + .055*(s.consumerConfidence-.62) - .018*(s.realRate-.012) + .035*s.realWageGrowth
       + .045*(s.householdIncome-2.35) + .025*(s.householdSavings-.58)
-      + (imp.confidence??0)*.18 + noise()*.0015, -.035, .045
+      + (imp.confidence??0)*.18 + tx.consumption + noise()*.0015, -.035, .045
     );
     const investmentGrowth = clamp(
       .004 + .075*(s.businessConfidence-.62) + .11*(s.creditGrowth-.03) - .045*Math.max(0,s.realRate-.012)
       + .018*(s.capacityUtilization-.78) + .012*(s.firmSales-94)
       + .025*(s.productivity-1) + noise()*.002, -.06, .075
     );
-    const governmentGrowth = clamp(.001 + .18*s.fiscalDemand + noise()*.001, -.025, .035);
+    const governmentGrowth = clamp(.001 + tx.government + noise()*.001, -.025, .035);
     const netExportsGrowth = clamp(.42*(s.growth-.02) - .03*(s.exchangeRate-1) + noise()*.001, -.04, .04);
     const demandGrowth = .61*consumptionGrowth + .21*investmentGrowth + .19*governmentGrowth + .08*netExportsGrowth;
     const qGrowth = clamp(
