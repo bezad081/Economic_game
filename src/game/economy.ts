@@ -136,6 +136,8 @@ export class EconomyEngine {
     const s=this.state;
     const before={gdp:s.realGDP,inflation:s.inflation,u:s.unemployment,debt:s.debtRatio,approval:s.approval};
     const imp=this.aggregateImpulses();
+    // Transmission channels depend on policy impulses, not on the later aggregate outcomes.
+    const tx=transmitDemand(s,imp);
     const noise = () => this.rng.range(-1,1);
 
     s.policyCapacity = clamp(s.policyCapacity + 30 + 6*Math.max(0,s.approval-.5),0,100);
@@ -163,7 +165,6 @@ export class EconomyEngine {
 
     // Micro layer: firms and households form the bridge between policy and aggregate demand.
     updateMicroeconomy(s,()=>this.rng.next());
-    const tx=transmitDemand(s,imp);
     const outputGap=(s.realGDP/s.potentialGDP)-1;
     s.outputGap=outputGap;
     // National-account demand channels: policy affects components first; GDP responds to their combined movement.
