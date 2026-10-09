@@ -70,6 +70,12 @@ export class EconomyEngine {
 
   snapshot(){ return structuredClone(this.state); }
 
+  /** Re-evaluate the active mandate after a scenario changes its starting conditions. */
+  refreshMission(){
+    this.state.activeMission = this.state.mode === 'mission' ? this.chooseMission() : null;
+    this.missionHold = 0;
+  }
+
   setMode(mode:GameMode){
     this.state.mode = mode;
     this.state.activeMission = mode === 'mission' ? this.chooseMission() : null;
