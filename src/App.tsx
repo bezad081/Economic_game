@@ -46,7 +46,7 @@ export default function App(){
     <header className="lab-header">
       <div className="brand"><div className="brand-mark">M</div><div><strong>MACROSTATE</strong><span>ECONOMIC POLICY LAB</span></div></div>
       <div className="header-context"><span>Q{econ.quarter} · {econ.year}</span><b>{econ.regime}</b></div>
-      <div className="header-actions"><button className={live?'status-live':''} onClick={()=>setLive(v=>!v)}><i/> {live?'Running':'Paused'}</button><button onClick={()=>setAdvisorOpen(true)}>Advisor</button><button onClick={()=>setWire(true)}>Wire</button><button className="primary" onClick={advance}>Advance quarter →</button></div>
+      <div className="header-actions"><button className={live?'status-live':''} onClick={()=>setLive(v=>!v)}><i/> {live?'Running':'Paused'}</button><button onClick={()=>setSpeed(v=>v===1?2:1)} title="Switch simulation speed">Tempo ×{speed}</button><button onClick={()=>setAdvisorOpen(true)}>Advisor</button><button onClick={()=>setWire(true)}>Wire</button><button className="primary" onClick={advance}>Advance quarter →</button></div>
     </header>
 
     <section className="metrics-area">
