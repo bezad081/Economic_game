@@ -430,3 +430,41 @@ body,.lab-shell{background:linear-gradient(135deg,#eaf2ee 0%,#f3f0e6 52%,#e5eff0
 .full-dashboard[data-dashboard-tab="trends"] .lower-lab-grid{display:none}
 .full-dashboard[data-dashboard-tab="diagnosis"] .learning-review-grid,
 .full-dashboard[data-dashboard-tab="diagnosis"] .event-trend-grid{display:none}
+
+
+/* Campaign clarity pass: visible objectives, deadlines, and meaningful progress */
+.mission-objective{
+  width:min(1500px,calc(100% - 40px));margin:12px auto 18px;padding:16px 18px;
+  display:grid;grid-template-columns:42px minmax(0,1fr) 160px;gap:14px;align-items:center;
+  border:1px solid #cbdedb;border-radius:15px;
+  background:linear-gradient(110deg,rgba(230,245,240,.92),rgba(244,248,246,.96) 56%,rgba(239,242,252,.94));
+  box-shadow:0 8px 24px rgba(39,78,73,.045)
+}
+.objective-symbol{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:#d5ebe4;color:#236b5b;font-size:25px}
+.objective-main{min-width:0}
+.objective-main>small,.objective-score>small{display:block;font-size:8px;letter-spacing:.13em;font-weight:800;color:#5c817a}
+.objective-main h3{font-size:15px;margin:4px 0;color:#294a47}
+.objective-main p{font-size:10px;line-height:1.5;color:#627873;margin:0 0 9px}
+.objective-progress{height:6px;background:#dbe8e4;border-radius:99px;overflow:hidden}
+.objective-progress span{display:block;height:100%;background:linear-gradient(90deg,#4a9c84,#79b99b);border-radius:99px;transition:width .35s ease}
+.objective-meta{display:flex;justify-content:space-between;gap:10px;margin-top:6px;color:#70847f;font-size:9px}
+.objective-meta b{color:#356d60;white-space:nowrap}
+.objective-score{align-self:stretch;border-left:1px solid #d5e3df;padding-left:17px;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.objective-score b{font:700 23px 'Space Grotesk';color:#315b52}
+.objective-score>small:last-child{font-size:9px;letter-spacing:0;color:#7d8e89;font-weight:500}
+.debrief-policy-line{margin:10px 0 12px;padding:10px 12px;border-radius:9px;background:#eaf2ef;color:#526b65;font-size:10px;line-height:1.5}
+.debrief-policy-line b{color:#2f554c}
+.debrief-policy-line span{padding:0 6px;color:#9caeaa}
+.mission-route span{transition:background .2s,color .2s}
+.mission-route span.route-current{color:#275e51;background:#dcefe8;border-radius:6px;padding:5px 7px;font-weight:800}
+.policy-card{cursor:pointer}
+.policy-card button:disabled{cursor:not-allowed;opacity:.45}
+@media(max-width:700px){
+ .mission-objective{width:calc(100% - 24px);grid-template-columns:34px minmax(0,1fr);padding:13px;gap:10px;margin:10px auto 14px}
+ .objective-symbol{width:32px;height:32px;font-size:20px}
+ .objective-score{grid-column:2;border-left:0;border-top:1px solid #d5e3df;padding:9px 0 0;display:grid;grid-template-columns:auto auto;align-items:center}
+ .objective-score b{font-size:18px}
+ .objective-score>small:last-child{grid-column:1/-1}
+ .objective-meta{align-items:flex-start;flex-direction:column;gap:4px}
+ .debrief-policy-line{font-size:9px}
+}
