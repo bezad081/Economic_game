@@ -468,3 +468,47 @@ body,.lab-shell{background:linear-gradient(135deg,#eaf2ee 0%,#f3f0e6 52%,#e5eff0
  .objective-meta{align-items:flex-start;flex-direction:column;gap:4px}
  .debrief-policy-line{font-size:9px}
 }
+
+
+/* Advisor coach mode: explain the diagnosis, recommendation, and trade-off in plain language. */
+.advisor-drawer{width:min(520px,94vw);max-height:100vh;overflow:auto;padding:20px}
+.advisor-drawer .drawer-head{position:sticky;top:-20px;z-index:2;background:var(--panel,#fff);padding:8px 0 14px;margin-bottom:10px}
+.advisor-drawer .drawer-head h2{font-size:19px;margin:4px 0 0}
+.advisor-primer{padding:15px;border:1px solid #dbe5f4;border-radius:13px;background:linear-gradient(135deg,#f1f6ff,#f7f9fc);margin-bottom:18px}
+.advisor-primer-label,.advisor-recommendation-heading small{display:block;font-size:9px;font-weight:800;letter-spacing:.09em;color:#6078a6}
+.advisor-primer h3{font-size:16px;line-height:1.35;margin:8px 0}
+.advisor-primer p{font-size:12px;line-height:1.6;color:#59667a;margin:0}
+.advisor-signal-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:13px}
+.advisor-signal-row>div{padding:9px 8px;background:rgba(255,255,255,.8);border:1px solid #e2e9f3;border-radius:8px;min-width:0}
+.advisor-signal-row small{display:block;color:#7a879b;font-size:9px}
+.advisor-signal-row b{display:block;font-size:15px;margin-top:3px;color:#273650}
+.advisor-learning-tip{display:flex;flex-direction:column;gap:4px;border-top:1px solid #dce5f2;margin-top:12px;padding-top:11px;font-size:11px;line-height:1.5;color:#56647a}
+.advisor-learning-tip b{font-size:10px;color:#34558b}
+.advisor-recommendation-heading{display:flex;align-items:end;justify-content:space-between;gap:10px;margin:8px 0 4px}
+.advisor-recommendation-heading h3{font-size:15px;margin:4px 0}
+.advisor-recommendation-heading>span{font-size:9px;color:var(--muted,#788397);text-align:right}
+.advisor-drawer .advisor-card{padding:13px 0;border-bottom:1px solid var(--line,#e8ebf1)}
+.advisor-card-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.advisor-card-top .advisor-rank{display:grid;place-items:center;width:25px;height:25px;border-radius:7px;background:#eaf0ff;color:#4166b0;font-size:10px;font-weight:800}
+.advisor-card .advisor-role{font-size:9px;font-weight:800;letter-spacing:.08em;color:#6078a6}
+.advisor-drawer .advisor-card h3{font-size:14px;margin:5px 0 8px;color:var(--ink,#263247)}
+.advisor-drawer .advisor-card p{font-size:11px;line-height:1.55;color:var(--muted,#667287);margin:7px 0}
+.advisor-card .advisor-fit b,.advisor-card .advisor-mechanism b{color:#364966}
+.advisor-tradeoff{font-size:11px;line-height:1.5;padding:9px 10px;border-radius:8px;background:#fff7e8;color:#775b2c;margin-top:8px}
+.advisor-tradeoff b{display:block;font-size:10px;color:#8c672b;margin-bottom:3px}
+.advisor-drawer .advisor-watch{font-size:10px;line-height:1.5;padding:9px 10px;background:#f0f7f5;color:#46685f;border-radius:8px;margin-top:7px}
+.advisor-drawer .advisor-watch b{display:block;color:#32695b;margin-bottom:3px}
+.advisor-cost-row{display:flex;flex-wrap:wrap;gap:7px 14px;margin:9px 0;color:#8490a1;font-size:9px}
+.advisor-cost-row b{color:#4b596d}
+.advisor-drawer .advisor-card button{display:block;margin-top:9px;padding:9px 11px;border-radius:8px;background:#eaf0ff;color:#3159a4;font-size:10px;font-weight:800}
+.advisor-drawer .advisor-card button:hover{background:#dce7ff}
+.advisor-disclaimer{font-size:10px;line-height:1.55;color:#7b8798;background:#f5f6f8;padding:11px;border-radius:9px;margin:14px 0 4px}
+@media(max-width:520px){
+ .advisor-drawer{padding:14px}
+ .advisor-drawer .drawer-head{top:-14px}
+ .advisor-primer{padding:12px}
+ .advisor-primer h3{font-size:14px}
+ .advisor-signal-row b{font-size:13px}
+ .advisor-recommendation-heading{align-items:flex-start;flex-direction:column;gap:3px}
+ .advisor-recommendation-heading>span{text-align:left}
+}
