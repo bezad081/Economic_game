@@ -419,3 +419,14 @@ body,.lab-shell{background:linear-gradient(135deg,#eaf2ee 0%,#f3f0e6 52%,#e5eff0
  .full-dashboard .mission-orientation{margin-left:12px;margin-right:12px}
 }
 @media(prefers-reduced-motion:reduce){.full-dashboard .dashboard-nav button{transition:none}}
+
+
+/* Keep each full-dashboard mode mutually exclusive even though the panels share the lab-grid base class. */
+.full-dashboard[data-dashboard-tab="policy"] .lower-lab-grid,
+.full-dashboard[data-dashboard-tab="policy"] .learning-review-grid,
+.full-dashboard[data-dashboard-tab="policy"] .event-trend-grid{display:none}
+.full-dashboard[data-dashboard-tab="learning"] .lower-lab-grid{display:none}
+.full-dashboard[data-dashboard-tab="events"] .lower-lab-grid{display:none}
+.full-dashboard[data-dashboard-tab="trends"] .lower-lab-grid{display:none}
+.full-dashboard[data-dashboard-tab="diagnosis"] .learning-review-grid,
+.full-dashboard[data-dashboard-tab="diagnosis"] .event-trend-grid{display:none}
