@@ -251,7 +251,7 @@ export class EconomyEngine {
     this.updateMission();
     this.randomDevelopment();
     this.recordHistory();
-    s.lastQuarterSummary = `${periodLabel(s.year,s.quarter)} • GDP ${s.growth>=0?'+':''}${(s.growth*100).toFixed(1)}% • inflation ${(s.inflation*100).toFixed(1)}% • unemployment ${(s.unemployment*100).toFixed(1)}% • debt ${(s.debtRatio*100).toFixed(1)}%.`;
+    s.lastQuarterSummary = `${periodLabel(s.year,s.quarter)} • GDP growth ${s.growth>=0?'+':''}${(s.growth*100).toFixed(1)}% (real GDP ${s.realGDP-before.gdp>=0?'+':''}${(s.realGDP-before.gdp).toFixed(1)}) • inflation ${(s.inflation*100).toFixed(2)}% (${(s.inflation-before.inflation)*100>=0?'+':''}${((s.inflation-before.inflation)*100).toFixed(2)} pp) • unemployment ${(s.unemployment*100).toFixed(2)}% (${(s.unemployment-before.u)*100>=0?'+':''}${((s.unemployment-before.u)*100).toFixed(2)} pp) • debt ${(s.debtRatio*100).toFixed(1)}%.`;
     if(s.pendingPolicy){
       const p=policyById(s.pendingPolicy.id);
       if(p){ s.lastLearningReview=assessPolicy(p,s.pendingPolicy.enactedTurn,s.pendingPolicy.before,s); }
@@ -376,14 +376,18 @@ export class EconomyEngine {
   }
 
   private learningNote(before:{gdp:number;inflation:number;u:number;debt:number;approval:number}){
-    const s=this.state;const dPi=s.inflation-before.inflation,dU=s.unemployment-before.u,dY=s.realGDP-before.gdp;
-    if(dPi<-.002&&dU>.001)return 'Inflation eased, but unemployment rose: the classic short-run stabilization trade-off is visible.';
-    if(dY>0&&dPi>.002)return 'Demand strengthened output, but price pressure also rose. Check the output gap before adding more stimulus.';
-    if(s.bankHealth<.6)return 'Financial transmission is impaired: bank health can dominate the effect of ordinary rate changes.';
-    if(s.debtRatio>before.debt+.005)return 'Debt rose this quarter. Compare the primary balance with growth and sovereign funding costs.';
-    if(s.outputGap>.04)return 'The economy is operating above estimated capacity, increasing the risk of persistent inflation.';
-    if(s.outputGap<-.04)return 'A negative output gap is opening. Demand support may help, provided inflation expectations remain anchored.';
-    return 'The economy moved gradually this quarter. Use the driver panels to separate demand, supply and financial effects.';
+    const s=this.state;
+    const dPi=s.inflation-before.inflation,dU=s.unemployment-before.u,dY=s.realGDP-before.gdp;
+    const pp=(v:number)=>`${v>=0?'+':''}${(v*100).toFixed(2)} pp`;
+    const observed=`Observed this quarter: real GDP ${dY>=0?'+':''}${dY.toFixed(1)}; inflation ${pp(dPi)}; unemployment ${pp(dU)}.`;
+    const caveat='Treat one quarter as an early signal: policy lags and unrelated shocks can also move these indicators.';
+    if(dPi<-.002&&dU>.001)return `${observed} Inflation eased while unemployment rose, illustrating the short-run stabilization trade-off: weaker demand can cool prices but also restrain hiring. ${caveat}`;
+    if(dY>0&&dPi>.002)return `${observed} Output strengthened alongside price pressure, a pattern consistent with stronger demand meeting capacity constraints. Check the output gap before adding more stimulus. ${caveat}`;
+    if(s.bankHealth<.6)return `${observed} Financial transmission is impaired: weak bank balance sheets can restrict credit and investment, muting the effect of ordinary rate changes. ${caveat}`;
+    if(s.debtRatio>before.debt+.005)return `${observed} The debt ratio increased. Compare the primary balance with economic growth and sovereign funding costs to assess whether the path is sustainable. ${caveat}`;
+    if(s.outputGap>.04)return `${observed} The economy is operating above estimated capacity, increasing the risk that demand pressure becomes persistent inflation. ${caveat}`;
+    if(s.outputGap<-.04)return `${observed} A negative output gap signals underused capacity. Demand support may help, provided inflation expectations remain anchored. ${caveat}`;
+    return `${observed} The overall movement is modest. Use the driver panels to distinguish demand, supply and financial channels before attributing the change to one policy. ${caveat}`;
   }
 
   private randomDevelopment(){
