@@ -19,7 +19,7 @@ export default function App(){
   const engineRef=useRef<EconomyEngine>();
   if(!engineRef.current)engineRef.current=new EconomyEngine(saved?.mode||'sandbox',saved);
   const [econ,setEcon]=useState(()=>engineRef.current!.snapshot());
-  const [started,setStarted]=useState(()=>localStorage.getItem(START_KEY)==='yes');
+  const [started,setStarted]=useState(false);
   const [intro,setIntro]=useState(false);
   const [guideStep,setGuideStep]=useState<GuideStep>('complete');
   const [guideBefore,setGuideBefore]=useState<{inflation:number;unemployment:number;growth:number}|null>(null);
@@ -36,18 +36,18 @@ export default function App(){
   const advance=()=>{try{const isTutorialReview=guideStep==='observe';engineRef.current!.stepQuarter();const n=engineRef.current!.snapshot();persist(n);const c=n.activeEvents.find(e=>e.status==='active'&&e.severity>=4);if(isTutorialReview){setLive(false);setGuideStep('result');setToast(n.lastLearningNote)}else if(c){setLive(false);setToast('Critical event: '+c.title+'. Pause and respond.')}else setToast(n.lastLearningNote)}catch(e){console.error(e);setLive(false);setToast('Simulation error caught; previous state preserved.')}};
   const enact=(p:PolicySpec)=>{const before=engineRef.current!.snapshot();const r=engineRef.current!.enact(p.id);if(!r.ok){setToast(r.reason);return}if(guideStep==='decision'){setGuideBefore({inflation:before.inflation,unemployment:before.unemployment,growth:before.growth});setGuideStep('observe');setLive(false)}setSelected(p);persist(engineRef.current!.snapshot());setToast(p.label+' enacted. Advance one quarter to observe its effects.')};
   const start=(mode:GameMode)=>{engineRef.current=new EconomyEngine(mode);if(mode==='mission'){const crisis=engineRef.current.state;crisis.realGDP=982;crisis.potentialGDP=1000;crisis.growth=.006;crisis.inflation=.084;crisis.coreInflation=.076;crisis.inflationExpected=.071;crisis.wageGrowth=.082;crisis.realWageGrowth=crisis.wageGrowth-crisis.inflation;crisis.unemployment=.104;crisis.outputGap=crisis.realGDP/crisis.potentialGDP-1;crisis.policyRate=.052;crisis.realRate=crisis.policyRate-crisis.inflationExpected;crisis.debtRatio=.61;crisis.primaryBalance=-.035;crisis.consumerConfidence=.42;crisis.businessConfidence=.45;crisis.approval=.38;crisis.regime='Stagflation';crisis.nationalScore=39;crisis.history=[];crisis.lastLearningNote='Prices are rising while jobs are scarce. Your first policy must balance stabilization with the risk of weakening activity further.';}const s=engineRef.current.snapshot();setEcon(s);setStarted(true);setIntro(true);setGuideStep(mode==='mission'?'diagnose':'complete');setGuideBefore(null);setLive(false);setSelected(null);localStorage.setItem(START_KEY,'yes');localStorage.setItem(SAVE_KEY,JSON.stringify(s));setToast(mode==='mission'?'National crisis brief ready. Diagnose before choosing a policy.':'Sandbox active. Explore the transmission channels.')};
-  const continueGame=()=>{setStarted(true);setIntro(true);setGuideStep('complete');setLive(true);localStorage.setItem(START_KEY,'yes')};
+  const continueGame=()=>{setStarted(true);setIntro(false);setGuideStep('complete');setLive(false);localStorage.setItem(START_KEY,'yes')};
   const reset=()=>{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(START_KEY);engineRef.current=new EconomyEngine('sandbox');setEcon(engineRef.current.snapshot());setStarted(false);setLive(false);setGuideStep('complete');setSelected(null)};
   useEffect(()=>{if(!started||!live)return;const id=window.setInterval(advance,speed===1?12000:6500);return()=>window.clearInterval(id)},[started,live,speed,econ.turn]);
   const recs=useMemo(()=>engineRef.current!.advisor(),[econ.turn,econ.inflation,econ.growth,econ.unemployment,econ.debtRatio,econ.bankHealth]);
   const policies=useMemo(()=>policiesByTab(tab==='Advisor'?'Monetary':tab),[tab]);
 
-  if(!started)return <Landing hasSave={!!saved} onStart={start} onContinue={continueGame}/>;
+  if(!started)return <Landing hasSave={!!readSave()} onStart={start} onContinue={continueGame}/>;
 
   return <div className="lab-shell">
     {intro&&<Intro onDone={()=>setIntro(false)}/>}
     <MissionGuide step={guideStep} econ={econ} selected={selected} before={guideBefore} onBeginDecision={()=>setGuideStep('decision')} onChoose={enact} onAdvance={advance} onFinish={()=>{setGuideStep('complete');setLive(false);setToast('Guided briefing complete. You are in control of the economy.')}} onSkip={()=>{setGuideStep('complete');setLive(false);setToast('Guide skipped. The simulation is paused and ready for your decisions.')}} />
-    <MissionGuide step={guideStep} econ={econ} selected={selected} before={guideBefore} onBeginDecision={()=>setGuideStep('decision')} onChoose={enact} onAdvance={advance} onFinish={()=>{setGuideStep('complete');setLive(false);setToast('Guided briefing complete. You are in control of the economy.')}} onSkip={()=>{setGuideStep('complete');setLive(false);setToast('Guide skipped. The simulation is paused and ready for your decisions.')}} />
+
     <header className="lab-header">
       <div className="brand"><div className="brand-mark">M</div><div><strong>MACROSTATE</strong><span>ECONOMIC POLICY LAB</span></div></div>
       <div className="header-context"><span>Q{econ.quarter} · {econ.year}</span><b>{econ.regime}</b></div>
