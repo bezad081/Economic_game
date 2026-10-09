@@ -21,6 +21,7 @@ export default function App(){
   const [econ,setEcon]=useState(()=>engineRef.current!.snapshot());
   const [started,setStarted]=useState(false);
   const [fullDashboard,setFullDashboard]=useState(false);
+  const [dashboardTab,setDashboardTab]=useState<'overview'|'policy'|'diagnosis'|'learning'|'events'|'trends'>('overview');
   const [campaignStep,setCampaignStep]=useState<'choose'|'advance'|'review'>('choose');
   const [intro,setIntro]=useState(false);
   const [guideStep,setGuideStep]=useState<GuideStep>('complete');
@@ -46,7 +47,7 @@ export default function App(){
 
   if(!started)return <Landing hasSave={!!readSave()} onStart={start} onContinue={continueGame}/>;
 
-  return <div className={"lab-shell "+(econ.mode==='mission'&&!fullDashboard?'focus-mode':'')}>
+  return <div className={"lab-shell "+(econ.mode==='mission'&&!fullDashboard?'focus-mode':'')+(fullDashboard?' full-dashboard':'')} data-dashboard-tab={dashboardTab}>
     {intro&&<Intro onDone={()=>setIntro(false)}/>}
     <MissionGuide step={guideStep} econ={econ} selected={selected} before={guideBefore} onBeginDecision={()=>setGuideStep('decision')} onChoose={enact} onAdvance={advance} onFinish={()=>{setGuideStep('complete');setCampaignStep('choose');setLive(false);setToast('Guided briefing complete. Choose one policy, then inspect its results.')}} onSkip={()=>{setGuideStep('complete');setCampaignStep('choose');setLive(false);setToast('Guide skipped. Choose one policy to continue the campaign.')}} />
 
@@ -57,7 +58,9 @@ export default function App(){
     </header>
 
 
-    {econ.mode==='mission'&&<section className="mission-orientation"><div className="mission-orientation-mark">01</div><div className="mission-orientation-copy"><small>YOUR FIRST MANDATE · STAGFLATION</small><h2>Stabilize prices without making the jobs crisis worse.</h2><p>{selected?<>Currently reviewing <b>{selected.label}</b>. Read its trade-off, apply it from the policy card, then advance one quarter to see what changes.</>:<>Start with one policy decision. Compare the trade-off, apply your choice, and advance one quarter. The detailed economic dashboard is available whenever you need it.</>}</p><div className="mission-route"><span className="route-current">1. Choose a policy</span><i>→</i><span>2. Apply it</span><i>→</i><span>3. Advance one quarter</span><i>→</i><span>4. Review results</span></div></div><button className="dashboard-toggle" onClick={()=>setFullDashboard(v=>!v)}>{fullDashboard?'Return to guided view':'Open full dashboard'} <span>{fullDashboard?'↑':'↗'}</span></button></section>}
+    {fullDashboard&&<nav className="dashboard-nav" aria-label="Dashboard sections">{([{id:'overview',label:'Overview',hint:'Key indicators'},{id:'policy',label:'Policy desk',hint:'Choose instruments'},{id:'diagnosis',label:'Diagnosis',hint:'Understand drivers'},{id:'learning',label:'Learning review',hint:'Review decisions'},{id:'events',label:'Events',hint:'Active shocks'},{id:'trends',label:'Trends',hint:'Track history'}] as const).map(t=><button key={t.id} className={dashboardTab===t.id?'active':''} onClick={()=>setDashboardTab(t.id)}><b>{t.label}</b><small>{t.hint}</small></button>)}</nav>}
+
+    {econ.mode==='mission'&&<section className="mission-orientation"><div className="mission-orientation-mark">01</div><div className="mission-orientation-copy"><small>YOUR FIRST MANDATE · STAGFLATION</small><h2>Stabilize prices without making the jobs crisis worse.</h2><p>{selected?<>Currently reviewing <b>{selected.label}</b>. Read its trade-off, apply it from the policy card, then advance one quarter to see what changes.</>:<>Start with one policy decision. Compare the trade-off, apply your choice, and advance one quarter. The detailed economic dashboard is available whenever you need it.</>}</p><div className="mission-route"><span className="route-current">1. Choose a policy</span><i>→</i><span>2. Apply it</span><i>→</i><span>3. Advance one quarter</span><i>→</i><span>4. Review results</span></div></div><button className="dashboard-toggle" onClick={()=>{setFullDashboard(v=>!v);setDashboardTab('overview')}}>{fullDashboard?'Return to guided view':'Open full dashboard'} <span>{fullDashboard?'↑':'↗'}</span></button></section>}
 
     {econ.mode==='mission'&&!fullDashboard&&campaignStep==='review'&&<section className="campaign-debrief"><div className="campaign-debrief-kicker">QUARTERLY DEBRIEF · Q{econ.quarter} {econ.year}</div><h2>What changed after your decision?</h2><p>{econ.lastLearningNote}</p><div className="campaign-debrief-stats"><div><small>INFLATION</small><b>{(econ.inflation*100).toFixed(1)}%</b></div><div><small>UNEMPLOYMENT</small><b>{(econ.unemployment*100).toFixed(1)}%</b></div><div><small>GDP GROWTH</small><b>{(econ.growth*100).toFixed(1)}%</b></div></div><button className="campaign-continue" onClick={()=>{setCampaignStep('choose');setSelected(null);setToast('Debrief complete. Review the new conditions and choose the next response.')}}>Understand the result · Choose next policy →</button></section>}
 
