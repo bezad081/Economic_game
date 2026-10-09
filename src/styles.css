@@ -257,3 +257,42 @@ body,.lab-shell{background:linear-gradient(135deg,#eaf2ee 0%,#f3f0e6 52%,#e5eff0
   .intro::before,.intro-grid,.intro-mark,.intro-title,.intro-sub,.intro-status,.intro-story,.intro-chain{animation:none!important}
   .intro-enter{transition:none}
 }
+
+
+/* Story-first mission mode: reveal complexity only when the player asks for it. */
+.mission-orientation{width:min(1500px,calc(100% - 40px));margin:18px auto 0;display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:16px;padding:18px 20px;border:1px solid #c9ddd4;border-radius:16px;background:linear-gradient(110deg,rgba(246,251,247,.98),rgba(231,243,236,.96));box-shadow:0 8px 26px rgba(38,75,67,.07)}
+.mission-orientation-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:12px;background:#244e4c;color:#f4d68b;font:700 15px 'Space Grotesk';letter-spacing:.04em}
+.mission-orientation-copy{min-width:0}
+.mission-orientation-copy>small{font-size:9px;letter-spacing:.15em;font-weight:800;color:#568078}
+.mission-orientation-copy h2{margin:4px 0 5px;color:#24464b;font:700 clamp(17px,2vw,22px)/1.2 'Space Grotesk'}
+.mission-orientation-copy p{margin:0;color:#617477;font-size:12px;line-height:1.5;max-width:900px}
+.mission-orientation-copy p b{color:#294e51}
+.mission-route{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:12px;color:#788b89;font-size:9px;font-weight:700}
+.mission-route i{font-style:normal;color:#a3b6af}
+.mission-route .route-current{color:#246e5c;background:#dceee3;padding:5px 8px;border-radius:7px}
+.dashboard-toggle{white-space:nowrap;align-self:center;background:#244e4c;color:#fff;padding:11px 13px;border-radius:9px;font-size:11px;font-weight:700;transition:transform .18s,background .18s}
+.dashboard-toggle:hover{background:#326b61;transform:translateY(-1px)}
+.dashboard-toggle span{margin-left:7px;color:#f4d68b}
+.focus-mode .metrics-area{margin-top:14px}
+.focus-mode .metric-group:not(:first-child){display:none}
+.focus-mode .dashboard-title{margin-bottom:8px}
+.focus-mode .dashboard-title h1{font-size:17px}
+.focus-mode .dashboard-title>span{display:none}
+.focus-mode .lab-grid:not(.lower-lab-grid):not(.learning-review-grid):not(.event-trend-grid){grid-template-columns:minmax(0,1fr);margin-top:10px}
+.focus-mode .map-column,.focus-mode .lower-lab-grid,.focus-mode .learning-review-grid,.focus-mode .event-trend-grid{display:none}
+.focus-mode .decision-column>.panel{height:auto;min-height:0}
+.focus-mode .decision-column .policy-list{max-height:430px}
+.focus-mode .tab-row button{font-size:10px;padding:8px 12px}
+.focus-mode .policy-card{padding:13px}
+.focus-mode .policy-top h3{font-size:13px}
+.focus-mode .policy-card p,.focus-mode .tradeoff{font-size:10px}
+.focus-mode .policy-card button{font-size:10px;padding:9px}
+.focus-mode .lab-footer{margin-top:18px}
+@media(max-width:900px){
+ .mission-orientation{width:calc(100% - 24px);grid-template-columns:38px minmax(0,1fr);gap:11px;padding:14px}
+ .mission-orientation-mark{width:36px;height:36px}
+ .mission-orientation-copy h2{font-size:17px}
+ .mission-orientation-copy p{font-size:11px}
+ .dashboard-toggle{grid-column:1/-1;justify-self:start}
+ .focus-mode .header-actions button:nth-child(2),.focus-mode .header-actions button:nth-child(3),.focus-mode .header-actions button:nth-child(4){display:none}
+}
