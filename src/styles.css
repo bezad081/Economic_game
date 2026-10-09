@@ -214,3 +214,46 @@ body,.lab-shell{background:linear-gradient(135deg,#eaf2ee 0%,#f3f0e6 52%,#e5eff0
  .guide-secondary{margin-left:0}
 }
 @media(prefers-reduced-motion:reduce){.intro-mark,.intro-core,.intro-title,.intro-sub,.intro-chain{animation:none!important}.intro{animation:none!important}}
+
+
+/* Cinematic crisis briefing: layered light, depth and restrained motion. */
+.intro{
+  isolation:isolate;
+  overflow:hidden;
+  background:
+    radial-gradient(ellipse at 50% 42%,rgba(47,91,101,.44) 0,rgba(23,42,51,.2) 30%,transparent 62%),
+    linear-gradient(135deg,#101c27 0%,#172b35 48%,#101922 100%);
+}
+.intro::before{
+  content:"";
+  position:absolute;
+  inset:-18%;
+  z-index:-1;
+  background:
+    radial-gradient(ellipse at 18% 72%,rgba(205,139,70,.15),transparent 28%),
+    radial-gradient(ellipse at 82% 24%,rgba(83,150,157,.2),transparent 32%),
+    radial-gradient(ellipse at 50% 110%,rgba(32,73,87,.5),transparent 46%);
+  animation:crisisDrift 12s ease-in-out infinite alternate;
+}
+.intro::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(90deg,rgba(5,12,18,.35),transparent 22%,transparent 78%,rgba(5,12,18,.35)),
+    linear-gradient(0deg,rgba(5,12,18,.48),transparent 28%,transparent 72%,rgba(5,12,18,.32));
+}
+.intro-grid{opacity:.55;animation:briefingGrid 28s linear infinite}
+.intro-core{z-index:1}
+.intro-status{animation:rise .65s ease both}
+.intro-story{animation:rise .95s ease both}
+.intro-chain{animation:rise 1.2s ease both}
+.intro-enter{box-shadow:0 8px 26px rgba(220,168,93,.17);transition:transform .2s ease,box-shadow .2s ease}
+.intro-enter:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(220,168,93,.28)}
+.intro-skip{position:relative;z-index:2}
+@keyframes crisisDrift{from{transform:translate3d(-1.5%,1%,0) scale(1)}to{transform:translate3d(1.5%,-1%,0) scale(1.06)}}
+@keyframes briefingGrid{from{transform:translateY(0)}to{transform:translateY(42px)}}
+@media(prefers-reduced-motion:reduce){
+  .intro::before,.intro-grid,.intro-mark,.intro-title,.intro-sub,.intro-status,.intro-story,.intro-chain{animation:none!important}
+  .intro-enter{transition:none}
+}
