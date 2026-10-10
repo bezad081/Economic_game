@@ -465,8 +465,8 @@ export class EconomyEngine {
       case 'credibility': return clamp((s.credibility-.50)/.40,0,1);
       case 'external': return clamp(((s.exports/Math.max(1,s.imports))-.75)/.50,0,1);
       case 'fiscal': return clamp((s.primaryBalance+.06)/.08,0,1);
-      case 'investment': return clamp((s.firmInvestment-2)/5,0,1);
-      case 'stability': return Math.min(clamp((.08-s.inflation)/.04,0,1),clamp((.11-s.unemployment)/.05,0,1),clamp((s.growth+.02)/.03,0,1),clamp((s.bankHealth-.35)/.40,0,1));
+      case 'investment': return clamp((s.firmInvestment-2)/4,0,1);
+      case 'stability': return Math.min(clamp((.08-s.inflation)/.04,0,1),clamp((.11-s.unemployment)/.05,0,1),clamp((s.growth+.02)/.03,0,1),clamp((s.bankHealth-.35)/.30,0,1));
       case 'national': return clamp((s.nationalScore-45)/30,0,1);
       default: return 0;
     }
