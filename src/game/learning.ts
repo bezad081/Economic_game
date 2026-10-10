@@ -22,22 +22,42 @@ export function assessPolicy(
   const expectedGrowth = policy.effects.growth ?? 0;
   const expectedInflation = policy.effects.inflation ?? 0;
   const expectedJobs = -(policy.effects.unemployment ?? 0);
+  const expectedDebtImprovement = -(policy.effects.debt ?? 0);
 
-  const alignment =
-    0.35 * Math.sign(dg || expectedGrowth) * Math.sign(expectedGrowth || dg) +
-    0.30 * Math.sign(dpi || expectedInflation) * Math.sign(expectedInflation || dpi) +
-    0.20 * Math.sign(-du || expectedJobs) * Math.sign(expectedJobs || -du) +
-    0.15 * Math.sign(-dd || -(policy.effects.debt ?? 0)) * Math.sign(-(policy.effects.debt ?? 0) || -dd);
+  // Score only outcomes for which this policy has a stated expected direction.
+  // A zero/near-zero observed movement is inconclusive, not automatic success.
+  const signals = [
+    { expected: expectedGrowth, observed: dg, weight: 0.35, deadband: 0.0005 },
+    { expected: expectedInflation, observed: dpi, weight: 0.30, deadband: 0.0004 },
+    { expected: expectedJobs, observed: -du, weight: 0.20, deadband: 0.0004 },
+    { expected: expectedDebtImprovement, observed: -dd, weight: 0.15, deadband: 0.001 },
+  ].filter(x => Math.abs(x.expected) > 0.00005);
+  const totalWeight = signals.reduce((sum, x) => sum + x.weight, 0);
+  const alignment = totalWeight === 0 ? 0 : signals.reduce((sum, x) => {
+    if (Math.abs(x.observed) < x.deadband) return sum;
+    return sum + x.weight * (Math.sign(x.observed) === Math.sign(x.expected) ? 1 : -1);
+  }, 0) / totalWeight;
 
-  const outcome: LearningReview['outcome'] = alignment > 0.35 ? 'favorable' : alignment < -0.15 ? 'unfavorable' : 'mixed';
+  const outcome: LearningReview['outcome'] =
+    alignment > 0.25 ? 'favorable' : alignment < -0.25 ? 'unfavorable' : 'mixed';
+  const elapsedQuarters = Math.max(0, after.turn - enactedTurn);
+  const observedChanges = {
+    growth: dg,
+    inflation: dpi,
+    unemployment: du,
+    debt: dd,
+    creditGrowth: after.creditGrowth - before.creditGrowth,
+    investmentPct: before.investment === 0 ? 0 : ((after.investment / before.investment) - 1) * 100,
+    consumptionPct: before.consumption === 0 ? 0 : ((after.consumption / before.consumption) - 1) * 100,
+  };
   const lag = policyLag(policy.tab);
 
   const result =
     outcome === 'favorable'
-      ? 'The observed movement is broadly consistent with the policy objective, although the trade-off still matters.'
+      ? 'The first observed movements broadly match the policy’s stated direction. This is an encouraging signal, not proof that the policy caused every change.'
       : outcome === 'unfavorable'
-      ? 'The policy moved at least one key outcome in an adverse direction. Check the transmission channel before repeating it.'
-      : 'The policy produced a mixed outcome. One objective improved while another cost increased, which is the normal policy problem.';
+      ? 'The first observed movements conflict with at least one stated policy objective. Check the transmission channel, implementation timing and unrelated shocks before repeating it.'
+      : 'The first-quarter evidence is mixed or inconclusive. Policy trade-offs, delayed transmission and unrelated shocks can all explain why the indicators do not move together.';
 
   let mechanism = buildChannel(policy);
   if (policy.tab === 'Monetary') {
@@ -69,6 +89,8 @@ export function assessPolicy(
     policyTab: policy.tab,
     enactedTurn,
     observedTurn: after.turn,
+    elapsedQuarters,
+    observedChanges,
     channel: buildChannel(policy),
     lagQuarters: lag,
     outcome,
