@@ -191,10 +191,29 @@ function Preview({policy,now}:{policy:PolicySpec|null;now:EconomySnapshot}){if(!
 }
 function LearningReviewPanel({econ}:{econ:EconomySnapshot}){
   const r=econ.lastLearningReview;
-  if(!r)return <div className="empty-state">Enact a policy and advance one quarter. The game will turn the observed result into a learning review.</div>;
+  if(!r)return <div className="empty-state">Enact a policy and advance one quarter. The game will compare the observed indicators with the previous quarter and explain the likely transmission channel.</div>;
+  const c=r.observedChanges;
+  const pp=(v:number)=>(v>=0?'+':'')+(v*100).toFixed(2)+' pp';
+  const pct=(v:number)=>(v>=0?'+':'')+v.toFixed(2)+'%';
   return <div className="learning-review">
-    <div className={'learning-outcome '+r.outcome}><span>ASSESSMENT</span><b>{r.outcome}</b><small>Observed after {r.lagQuarters}Q policy lag</small></div>
+    <div className={'learning-outcome '+r.outcome}><span>FIRST-LOOK ASSESSMENT</span><b>{r.outcome}</b><small>Observed Q+{r.elapsedQuarters} · indicative lag {r.lagQuarters}Q</small></div>
     <p className="learning-result">{r.result}</p>
+    <div className="observed-heading"><b>Observed change since the previous quarter</b><span>Not a causal estimate</span></div>
+    <div className="observed-grid">
+      <div className="observed-item"><small>GDP growth rate</small><b>{pp(c.growth)}</b><span>annualized rate</span></div>
+      <div className="observed-item"><small>Inflation</small><b>{pp(c.inflation)}</b><span>inflation rate</span></div>
+      <div className="observed-item"><small>Unemployment</small><b>{pp(c.unemployment)}</b><span>unemployment rate</span></div>
+      <div className="observed-item"><small>Debt / GDP</small><b>{pp(c.debt)}</b><span>debt ratio</span></div>
+      <div className="observed-item"><small>Credit growth</small><b>{pp(c.creditGrowth)}</b><span>credit growth rate</span></div>
+      <div className="observed-item"><small>Investment</small><b>{pct(c.investmentPct)}</b><span>relative change</span></div>
+      <div className="observed-item"><small>Consumption</small><b>{pct(c.consumptionPct)}</b><span>relative change</span></div>
+    </div>
+    <div className="learning-caveat">
+      <b>{r.elapsedQuarters < r.lagQuarters ? 'EARLY SIGNAL · LAG STILL IN PROGRESS' : 'INTERPRET WITH CARE'}</b>
+      <span>{r.elapsedQuarters < r.lagQuarters
+        ? 'The typical transmission lag has not fully elapsed. Do not judge a slow-moving reform from this quarter alone.'
+        : 'The indicative lag window has been reached, but shocks, expectations and other policies can also explain these movements.'}</span>
+    </div>
     <div className="learning-section"><small>TRANSMISSION CHANNEL</small><p>{r.channel}</p></div>
     <div className="learning-section"><small>WHAT ACTUALLY HAPPENED</small><p>{r.mechanism}</p></div>
     <div className="learning-section"><small>TRADE-OFF</small><p>{r.tradeoff}</p></div>
