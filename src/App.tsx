@@ -5,6 +5,7 @@ import type { AdvisorRecommendation, EconomySnapshot, GameMode, PolicySpec, Tab 
 
 const SAVE_KEY = 'macrostate-economic-lab-v1';
 const START_KEY = 'macrostate-economic-lab-started';
+const CAMPAIGN_UNLOCK_KEY = 'macrostate-economic-lab-campaign-unlocked';
 type GuideStep = 'diagnose'|'decision'|'observe'|'result'|'complete';
 type MetricKey = 'householdIncome'|'householdSavings'|'firmSales'|'firmInvestment'|'capacityUtilization'|'consumption'|'investment'|'governmentSpending'|'netExports'|'growth'|'inflation'|'unemployment'|'debt'|'policyRate'|'creditGrowth'|'exchangeRate'|'bankHealth'|'outputGap'|'productivity'|'realWageGrowth'|'primaryBalance'|'treasury'|'businessConfidence'|'consumerConfidence'|'fxReserves'|'exports'|'imports'|'currentAccount'|'poverty'|'inequality';
 
@@ -35,7 +36,7 @@ export default function App(){
   const [selectedMetric,setSelectedMetric]=useState<MetricKey>('inflation');
   const [toast,setToast]=useState('Read the indicators, diagnose the economy, then choose a policy.');
 
-  const persist=(s:EconomySnapshot)=>{setEcon(s);localStorage.setItem(SAVE_KEY,JSON.stringify(s))};
+  const persist=(s:EconomySnapshot)=>{setEcon(s);localStorage.setItem(SAVE_KEY,JSON.stringify(s));if(s.mode==='mission'&&s.missionsCompleted>=15)localStorage.setItem(CAMPAIGN_UNLOCK_KEY,'yes')};
   const advance=()=>{try{const isTutorialReview=guideStep==='observe';if(econ.mode==='mission'&&guideStep==='complete'&&campaignStep==='advance')setCampaignStep('review');engineRef.current!.stepQuarter();const n=engineRef.current!.snapshot();persist(n);const c=n.activeEvents.find(e=>e.status==='active'&&e.severity>=4);if(isTutorialReview){setLive(false);setGuideStep('result');setToast(n.lastLearningNote)}else if(c){setLive(false);setToast('Critical event: '+c.title+'. Pause and respond.')}else setToast(n.lastLearningNote)}catch(e){console.error(e);setLive(false);setToast('Simulation error caught; previous state preserved.')}};
   const enact=(p:PolicySpec)=>{const before=engineRef.current!.snapshot();const r=engineRef.current!.enact(p.id);if(!r.ok){setToast(r.reason);return}if(guideStep==='decision'){setGuideBefore({inflation:before.inflation,unemployment:before.unemployment,growth:before.growth});setGuideStep('observe');setLive(false)}setSelected(p);if(before.mode==='mission'&&guideStep==='complete')setCampaignStep('advance');persist(engineRef.current!.snapshot());setToast(p.label+' enacted. Advance one quarter to observe its effects.')};
   const start=(mode:GameMode)=>{setFullDashboard(false);setCampaignStep('choose');engineRef.current=new EconomyEngine(mode);if(mode==='mission'){const crisis=engineRef.current.state;crisis.realGDP=982;crisis.potentialGDP=1000;crisis.growth=.006;crisis.inflation=.084;crisis.coreInflation=.076;crisis.inflationExpected=.071;crisis.wageGrowth=.082;crisis.realWageGrowth=crisis.wageGrowth-crisis.inflation;crisis.unemployment=.104;crisis.outputGap=crisis.realGDP/crisis.potentialGDP-1;crisis.policyRate=.052;crisis.realRate=crisis.policyRate-crisis.inflationExpected;crisis.debtRatio=.61;crisis.primaryBalance=-.035;crisis.consumerConfidence=.42;crisis.businessConfidence=.45;crisis.approval=.38;crisis.regime='Stagflation';crisis.nationalScore=39;crisis.history=[];crisis.lastLearningNote='Prices are rising while jobs are scarce. Your first policy must balance stabilization with the risk of weakening activity further.';engineRef.current.refreshMission();}const s=engineRef.current.snapshot();setEcon(s);setStarted(true);setIntro(mode==='mission');setGuideStep(mode==='mission'?'diagnose':'complete');setGuideBefore(null);setLive(false);setSelected(null);localStorage.setItem(START_KEY,'yes');localStorage.setItem(SAVE_KEY,JSON.stringify(s));setToast(mode==='mission'?'National crisis brief ready. Diagnose before choosing a policy.':'Sandbox active. Explore the transmission channels.')};
@@ -45,7 +46,7 @@ export default function App(){
   const recs=useMemo(()=>engineRef.current!.advisor(),[econ.turn,econ.inflation,econ.growth,econ.unemployment,econ.debtRatio,econ.bankHealth]);
   const policies=useMemo(()=>policiesByTab(tab==='Advisor'?'Monetary':tab),[tab]);
 
-  if(!started)return <Landing hasSave={!!saved} campaignUnlocked={!!saved&&saved.mode==='mission'&&saved.missionsCompleted>=15} onStart={start} onContinue={continueGame}/>;
+  if(!started)return <Landing hasSave={!!saved} campaignUnlocked={localStorage.getItem(CAMPAIGN_UNLOCK_KEY)==='yes'||(!!saved&&saved.mode==='mission'&&saved.missionsCompleted>=15)} onStart={start} onContinue={continueGame}/>;
 
   return <div className={"lab-shell "+(econ.mode==='mission'&&!fullDashboard?'focus-mode':'')+(fullDashboard?' full-dashboard':'')} data-dashboard-tab={dashboardTab}>
     {intro&&<Intro onDone={()=>setIntro(false)}/>}
