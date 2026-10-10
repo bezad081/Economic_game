@@ -141,7 +141,20 @@ export interface LearningReview {
   policyTab: Exclude<Tab,'Advisor'>;
   enactedTurn: number;
   observedTurn: number;
+  elapsedQuarters: number;
+  observedChanges: {
+    /** Change in annualized GDP growth rate, in decimal form. */
+    growth: number;
+    inflation: number;
+    unemployment: number;
+    debt: number;
+    creditGrowth: number;
+    /** Relative change in each demand component, expressed as percent. */
+    investmentPct: number;
+    consumptionPct: number;
+  };
   channel: string;
+  /** Indicative typical transmission lag, in quarters. */
   lagQuarters: number;
   outcome: 'favorable' | 'mixed' | 'unfavorable';
   result: string;
