@@ -512,3 +512,18 @@ body,.lab-shell{background:linear-gradient(135deg,#eaf2ee 0%,#f3f0e6 52%,#e5eff0
  .advisor-recommendation-heading{align-items:flex-start;flex-direction:column;gap:3px}
  .advisor-recommendation-heading>span{text-align:left}
 }
+
+
+/* Evidence-led policy learning review */
+.observed-heading{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:15px 0 8px}
+.observed-heading b{font-size:11px;color:#3c5960}
+.observed-heading span{font-size:8px;color:#819096}
+.observed-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.observed-item{min-width:0;padding:10px 9px;border-radius:9px;background:linear-gradient(145deg,#f5f8f4,#edf3ef);border:1px solid #dce7e0}
+.observed-item small{display:block;min-height:22px;font-size:8px;line-height:1.3;letter-spacing:.02em;color:#71858a}
+.observed-item b{display:block;margin-top:5px;color:#31565d;font:700 13px 'Space Grotesk',sans-serif;overflow-wrap:anywhere}
+.observed-item span{display:block;margin-top:3px;font-size:8px;color:#869499}
+.learning-caveat{display:grid;gap:5px;margin:11px 0 4px;padding:10px 12px;border-radius:9px;background:#f8f3e9;border:1px solid #ece0c8}
+.learning-caveat b{font-size:8px;letter-spacing:.08em;color:#8d713e}
+.learning-caveat span{font-size:10px;line-height:1.5;color:#6e7067}
+@media(max-width:760px){.observed-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.observed-heading{align-items:flex-start;flex-direction:column}.observed-item small{min-height:0}}
