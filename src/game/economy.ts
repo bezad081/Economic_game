@@ -427,39 +427,72 @@ export class EconomyEngine {
     return 100*(.22*inflation+.18*jobs+.17*growth+.13*debt+.13*s.bankHealth+.10*social+.07*clamp(s.energySecurity,0,1));
   }
 
+  /** The campaign is a fixed 15-chapter curriculum, not a mission chosen repeatedly from whichever KPI is worst. */
   private chooseMission():Mission {
     const s=this.state;
-    if(s.inflation>.045) return {id:'prices',title:'Restore Price Stability',description:'Bring inflation below 4% without causing a deep recession.',deadline:s.turn+8,progress:clamp((.08-s.inflation)/.04,0,1),targetText:'Inflation < 4%'};
-    if(s.unemployment>.07) return {id:'jobs',title:'Jobs Recovery',description:'Reduce unemployment while keeping inflation contained.',deadline:s.turn+8,progress:clamp((.11-s.unemployment)/.04,0,1),targetText:'Unemployment < 6%'};
-    if(s.debtRatio>.8) return {id:'debt',title:'Fiscal Credibility',description:'Stabilize public debt and preserve growth.',deadline:s.turn+10,progress:clamp((1.05-s.debtRatio)/.30,0,1),targetText:'Debt/GDP < 78%'};
-    if(s.bankHealth<.65) return {id:'banks',title:'Financial Stability',description:'Restore bank balance sheets and credit transmission.',deadline:s.turn+7,progress:clamp((s.bankHealth-.35)/.40,0,1),targetText:'Bank health > 75'};
-    return {id:'productivity',title:'Productivity Agenda',description:'Raise technology and potential output without destabilizing prices.',deadline:s.turn+10,progress:clamp((s.technology-70)/15,0,1),targetText:'Technology > 85'};
+    const chapters:Mission[]=[
+      {id:'prices',title:'Chapter 1 · The Price Spiral',description:'Bring inflation below 3% while keeping the economy out of a deep contraction.',deadline:s.turn+8,progress:0,targetText:'Inflation below 3.0%'},
+      {id:'jobs',title:'Chapter 2 · The Jobs Mandate',description:'Reduce unemployment below 5% without letting price pressure return.',deadline:s.turn+8,progress:0,targetText:'Unemployment below 5.0%'},
+      {id:'banks',title:'Chapter 3 · Credit Is the Lifeblood',description:'Restore bank resilience so households and productive firms can access credit.',deadline:s.turn+8,progress:0,targetText:'Bank health above 85%'},
+      {id:'debt',title:'Chapter 4 · The Debt Constraint',description:'Put public debt on a safer path without sacrificing the recovery.',deadline:s.turn+10,progress:0,targetText:'Debt/GDP below 50%'},
+      {id:'technology',title:'Chapter 5 · Beyond Cheap Growth',description:'Build productive capacity through technology and productivity, not demand alone.',deadline:s.turn+10,progress:0,targetText:'Technology index above 90'},
+      {id:'energy',title:'Chapter 6 · The Energy Bottleneck',description:'Strengthen energy security so supply disruptions do not repeatedly damage output and prices.',deadline:s.turn+9,progress:0,targetText:'Energy security above 85%'},
+      {id:'poverty',title:'Chapter 7 · Growth Must Reach Households',description:'Reduce poverty by improving the conditions that shape jobs, real incomes and living costs.',deadline:s.turn+10,progress:0,targetText:'Poverty below 6%'},
+      {id:'inequality',title:'Chapter 8 · Who Gains from Growth?',description:'Improve distributional outcomes while preserving incentives to invest and produce.',deadline:s.turn+10,progress:0,targetText:'Inequality index below 0.30'},
+      {id:'housing',title:'Chapter 9 · The Housing Squeeze',description:'Improve housing affordability without creating an unstable credit or property boom.',deadline:s.turn+10,progress:0,targetText:'Housing affordability above 0.90'},
+      {id:'credibility',title:'Chapter 10 · Credibility Is Capital',description:'Anchor expectations and rebuild trust that policy will remain coherent over time.',deadline:s.turn+9,progress:0,targetText:'Policy credibility above 90%'},
+      {id:'external',title:'Chapter 11 · The External Balance',description:'Improve external competitiveness and resilience without relying on a fragile currency path.',deadline:s.turn+10,progress:0,targetText:'Exports / imports ratio above 1.25'},
+      {id:'fiscal',title:'Chapter 12 · A Sustainable Budget',description:'Strengthen the primary fiscal balance while keeping the wider economy viable.',deadline:s.turn+10,progress:0,targetText:'Primary balance above +2% of GDP'},
+      {id:'investment',title:'Chapter 13 · Convince Firms to Invest',description:'Turn confidence and financing conditions into stronger productive investment.',deadline:s.turn+10,progress:0,targetText:'Firm investment index above 6'},
+      {id:'stability',title:'Chapter 14 · The Policy Mix',description:'Manage inflation, employment, growth and bank health together; one good KPI is not enough.',deadline:s.turn+12,progress:0,targetText:'Inflation < 4%, unemployment < 6%, growth > 1%, bank health > 65%'},
+      {id:'national',title:'Chapter 15 · The National Economic Review',description:'Finish with a balanced economy: durable growth, price stability, resilience and public welfare.',deadline:s.turn+12,progress:0,targetText:'National score above 75'},
+    ];
+    return chapters[Math.min(s.missionsCompleted,chapters.length-1)];
   }
 
   private missionProgress(m:Mission){
     const s=this.state;
-    if(m.id==='prices') return clamp((.08-s.inflation)/.04,0,1);
-    if(m.id==='jobs') return clamp((.11-s.unemployment)/.05,0,1);
-    if(m.id==='debt') return clamp((1.05-s.debtRatio)/.30,0,1);
-    if(m.id==='banks') return clamp((s.bankHealth-.35)/.40,0,1);
-    return clamp((s.technology-70)/15,0,1);
+    switch(m.id){
+      case 'prices': return clamp((.08-s.inflation)/.05,0,1);
+      case 'jobs': return clamp((.11-s.unemployment)/.06,0,1);
+      case 'banks': return clamp((s.bankHealth-.35)/.50,0,1);
+      case 'debt': return clamp((.90-s.debtRatio)/.40,0,1);
+      case 'technology': return clamp((s.technology-65)/25,0,1);
+      case 'energy': return clamp((s.energySecurity-.45)/.40,0,1);
+      case 'poverty': return clamp((.18-s.poverty)/.12,0,1);
+      case 'inequality': return clamp((.46-s.inequality)/.16,0,1);
+      case 'housing': return clamp((s.housingAffordability-.35)/.55,0,1);
+      case 'credibility': return clamp((s.credibility-.50)/.40,0,1);
+      case 'external': return clamp(((s.exports/Math.max(1,s.imports))-.75)/.50,0,1);
+      case 'fiscal': return clamp((s.primaryBalance+.06)/.08,0,1);
+      case 'investment': return clamp((s.firmInvestment-2)/5,0,1);
+      case 'stability': return Math.min(clamp((.08-s.inflation)/.04,0,1),clamp((.11-s.unemployment)/.05,0,1),clamp((s.growth+.02)/.03,0,1),clamp((s.bankHealth-.35)/.40,0,1));
+      case 'national': return clamp((s.nationalScore-45)/30,0,1);
+      default: return 0;
+    }
   }
 
   private updateMission(){
     const s=this.state;
     if(s.mode!=='mission') return;
+    if(s.missionsCompleted>=15){
+      s.activeMission={id:'campaign_complete',title:'Campaign complete · Chief Economic Strategist',description:'You have completed all 15 mandates. Continue in Sandbox to test alternative policy mixes and stress scenarios.',deadline:s.turn,progress:1,targetText:'15 of 15 chapters completed'};
+      return;
+    }
     if(!s.activeMission) s.activeMission=this.chooseMission();
     const m=s.activeMission!;
     m.progress=this.missionProgress(m);
     if(m.progress>=1) this.missionHold++; else this.missionHold=0;
     if(this.missionHold>=2){
-      s.missionsCompleted++; s.missionScore=clamp(s.missionScore+12,0,100); s.approval=clamp(s.approval+.025,0,1); s.politicalCapital=clamp(s.politicalCapital+8,0,100);
-      this.pushNews(`Mission completed: ${m.title}.`, 'good');
-      s.activeMission=this.chooseMission(); this.missionHold=0;
+      s.missionsCompleted=Math.min(15,s.missionsCompleted+1); s.missionScore=clamp(s.missionScore+12,0,100); s.approval=clamp(s.approval+.025,0,1); s.politicalCapital=clamp(s.politicalCapital+8,0,100);
+      this.pushNews(`Campaign chapter completed: ${m.title}.`, 'good');
+      s.activeMission=s.missionsCompleted>=15?{id:'campaign_complete',title:'Campaign complete · Chief Economic Strategist',description:'You have completed all 15 mandates. Continue in Sandbox to test alternative policy mixes and stress scenarios.',deadline:s.turn,progress:1,targetText:'15 of 15 chapters completed'}:this.chooseMission();
+      this.missionHold=0;
     } else if(s.turn>m.deadline){
       s.missionScore=clamp(s.missionScore-6,0,100); s.approval=clamp(s.approval-.02,0,1);
-      this.pushNews(`Mission deadline missed: ${m.title}. Cabinet receives a new objective.`, 'bad');
-      s.activeMission=this.chooseMission(); this.missionHold=0;
+      this.pushNews(`Deadline missed: ${m.title}. The same chapter remains active with a shorter recovery window.`, 'bad');
+      s.activeMission={...m,deadline:s.turn+6,progress:this.missionProgress(m)};
+      this.missionHold=0;
     }
   }
 
