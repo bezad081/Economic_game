@@ -75,7 +75,9 @@ export function assessPolicy(
   }
 
   const nextStep =
-    after.inflation > 0.06
+    elapsedQuarters < lag
+      ? `This is an early signal: only ${elapsedQuarters} quarter(s) have passed against an indicative ${lag}-quarter lag. Monitor the relevant channel before making another large adjustment.`
+      : after.inflation > 0.06
       ? 'Do not judge the policy by GDP alone; inflation persistence is now the key constraint.'
       : after.unemployment > 0.08
       ? 'Watch employment and household income before withdrawing support too quickly.'
