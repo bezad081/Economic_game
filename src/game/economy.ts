@@ -191,8 +191,13 @@ export class EconomyEngine {
     const governmentGrowth = clamp(.001 + tx.government + noise()*.001, -.025, .035);
     const netExportsGrowth = clamp(.42*(s.growth-.02) - .03*(s.exchangeRate-1) + noise()*.001, -.04, .04);
     const demandGrowth = .61*consumptionGrowth + .21*investmentGrowth + .19*governmentGrowth + .08*netExportsGrowth;
+    // Demand support has a larger real-output payoff when resources are idle, but a
+    // smaller payoff when an energy bottleneck prevents firms from expanding production.
+    // The same bottleneck instead makes demand pressure more likely to show up in prices below.
+    const supplyConstraint = Math.max(0, .70-s.energySecurity);
+    const demandMultiplier = clamp(1 + 1.8*Math.max(0,-outputGap) - 0.9*supplyConstraint, .65, 1.40);
     const qGrowth = clamp(
-      .0035 + .55*demandGrowth + (imp.growth??0) + .018*(s.businessConfidence-.62) + .012*(s.consumerConfidence-.62)
+      .0035 + .55*demandGrowth*demandMultiplier + (imp.growth??0) + .018*(s.businessConfidence-.62) + .012*(s.consumerConfidence-.62)
       + .035*(s.creditGrowth-.03) - .075*Math.max(-.02,s.realRate-.012) - .045*Math.max(0,outputGap-.04)
       + noise()*.0018, -.055,.07
     );
@@ -208,7 +213,6 @@ export class EconomyEngine {
     const importedInflation=.018*Math.max(-.15,s.exchangeRate-1)+.012*Math.max(0,.7-s.energySecurity);
     // Demand pressure is more inflationary when supply capacity is constrained; this makes
     // identical stimulus less benign in an energy shock than in a deep demand recession.
-    const supplyConstraint = Math.max(0, .70-s.energySecurity);
     const capacityPressure = Math.max(0, s.capacityUtilization-.78);
     s.coreInflation = clamp(.70*s.coreInflation + .18*s.inflationExpected + .12*.025
       + .034*newGap
