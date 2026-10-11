@@ -90,6 +90,38 @@ describe('economic model invariants', () => {
     expect(engine.state.unemployment).toBeLessThanOrEqual(1);
   });
 
+  it('waits for the policy-family lag before reviewing structural reform', () => {
+    const engine = new EconomyEngine('sandbox');
+    expect(engine.enact('business_reform').ok).toBe(true);
+    const lag = policyLag('Structural');
+    for (let quarter = 0; quarter < lag - 1; quarter += 1) {
+      engine.stepQuarter();
+      expect(engine.state.lastLearningReview).toBeNull();
+      expect(engine.state.pendingPolicies).toHaveLength(1);
+    }
+    engine.stepQuarter();
+    expect(engine.state.lastLearningReview?.policyId).toBe('business_reform');
+    expect(engine.state.lastLearningReview?.elapsedQuarters).toBeGreaterThanOrEqual(lag);
+    expect(engine.state.pendingPolicies).toHaveLength(0);
+    expect(engine.state.pendingPolicy).toBeNull();
+  });
+
+  it('keeps earlier policy decisions in the learning queue instead of overwriting them', () => {
+    const engine = new EconomyEngine('sandbox');
+    expect(engine.enact('rate_up').ok).toBe(true);
+    expect(engine.enact('business_reform').ok).toBe(true);
+    expect(engine.state.pendingPolicies).toHaveLength(2);
+    expect(engine.state.pendingPolicies?.map(p => p.id)).toEqual(['rate_up', 'business_reform']);
+
+    const longestLag = Math.max(policyLag('Monetary'), policyLag('Structural'));
+    for (let quarter = 0; quarter < longestLag; quarter += 1) engine.stepQuarter();
+
+    expect(engine.state.pendingPolicies).toHaveLength(0);
+    expect(['rate_up', 'business_reform']).toContain(engine.state.lastLearningReview?.policyId);
+    expect(engine.state.news.some(item => item.text.includes('Learning review ready: rate_up'))).toBe(true);
+    expect(engine.state.news.some(item => item.text.includes('Learning review ready: Business Reform'))).toBe(true);
+  });
+
   it('makes monetary tightening and easing produce opposite credit conditions over the same seeded path', () => {
     const tightening = new EconomyEngine('sandbox');
     const easing = new EconomyEngine('sandbox');
