@@ -565,3 +565,18 @@ body,.lab-shell{background:linear-gradient(135deg,#eaf2ee 0%,#f3f0e6 52%,#e5eff0
 
 /* Event cards now expose deadlines and the next link in a crisis chain. */
 .event-meta{display:flex;justify-content:space-between;align-items:center;gap:6px}.event-meta>span{font-size:8px;letter-spacing:.1em;color:#8791a5;font-weight:700}.event-meta .event-deadline{font-size:8px;letter-spacing:.05em;color:#7b8497;background:#edf0f5;border-radius:5px;padding:4px 5px;white-space:nowrap}.event-meta .event-deadline.urgent{color:#b82e36;background:#ffe2e1}.event-consequence{display:flex;flex-direction:column;gap:3px;padding:8px;margin:8px 0;border-radius:7px;background:rgba(255,255,255,.72);border:1px solid rgba(210,80,80,.12)}.event-consequence b{font-size:9px;color:#b14a4a}.event-consequence span{font-size:10px;line-height:1.45;color:#6e5260}.event-response-label{font-size:9px;line-height:1.45;color:#596780;margin:8px 0;font-weight:600}
+
+/* Strategic advisor: ranked priorities, explicit cautions, and decision-memory context. */
+.strategic-brief{margin:14px 0;padding:13px;border:1px solid #d8e4e1;border-radius:12px;background:linear-gradient(145deg,#f4faf7,#f5f7fc);color:#304b4b}
+.strategic-brief-head{padding-bottom:10px;border-bottom:1px solid #dce8e3}
+.strategic-brief-head small{font-size:8px;font-weight:800;letter-spacing:.1em;color:#578477}
+.strategic-brief-head h3{font-size:15px;line-height:1.35;margin:6px 0 0;color:#254c47}
+.strategic-brief-row{margin-top:9px;padding:9px 10px;border-radius:8px;background:rgba(255,255,255,.76);border:1px solid #e3ebe8}
+.strategic-brief-row b,.strategic-learning b{display:block;font-size:10px;color:#426c63}
+.strategic-brief-row p,.strategic-learning p{font-size:11px;line-height:1.55;color:#5b6d6d;margin:4px 0 0}
+.strategic-brief-row.priority{border-left:3px solid #45987c}
+.strategic-brief-row.caution{border-left:3px solid #d5a34d}
+.strategic-horizon{margin-top:9px;font-size:9px;line-height:1.5;color:#62788a;background:#eaf0f7;border-radius:7px;padding:8px 9px}
+.strategic-learning{margin-top:10px;padding:10px;border-radius:8px;background:#eef2fb;border:1px solid #dfe5f4}
+.strategic-learning b{color:#4b6394}
+.strategic-learning p{color:#5e6d86}
