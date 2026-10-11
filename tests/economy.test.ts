@@ -282,3 +282,20 @@ describe('scenario-aware policy preview', () => {
     }
   });
 });
+
+
+describe('crisis event chains', () => {
+  it('escalates an unresolved severe opening event into a linked follow-up shock', () => {
+    const baseline = new EconomyEngine('mission').snapshot();
+    applyCrisisScenario(baseline, 'energy');
+    const engine = new EconomyEngine('mission', baseline);
+    engine.state.turn = 5; // the opening event's response deadline was quarter 4
+    engine.stepQuarter();
+    expect(engine.state.eventHistory.some(e => e.id === 'opening-energy' && e.status === 'expired')).toBe(true);
+    const followUp = engine.state.activeEvents.find(e => e.stage === 2 && e.parentEventId === 'opening-energy');
+    expect(followUp).toBeDefined();
+    expect(followUp?.chainId).toBe('opening-energy');
+    expect(followUp?.description).toContain('wage');
+    expect(engine.state.news.some(n => n.text.includes('Event chain advanced'))).toBe(true);
+  });
+});
