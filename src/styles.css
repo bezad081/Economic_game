@@ -545,3 +545,19 @@ body,.lab-shell{background:linear-gradient(135deg,#eaf2ee 0%,#f3f0e6 52%,#e5eff0
 .scenario-stats i{font-style:normal;font-size:8px;letter-spacing:.02em;color:#5f6d80;background:#e9eef6;padding:5px 6px;border-radius:5px;white-space:nowrap}
 .scenario-description{font-size:11px;line-height:1.5;color:#66758a;margin:12px auto 0;max-width:650px}
 @media(max-width:680px){.scenario-picker{padding:9px;margin-top:20px}.scenario-picker-heading{align-items:flex-start;flex-direction:column;gap:4px}.scenario-choice{grid-template-columns:18px minmax(0,1fr);gap:8px;padding:10px}.scenario-stats{grid-column:2;justify-content:flex-start}.scenario-copy b{font-size:11px}.scenario-copy small{font-size:9px}}
+
+
+/* Scenario-aware policy preview: separate the intended upside from the risk. */
+.policy-guidance{margin:12px 0 14px;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fbfcff}
+.policy-fit{display:flex;flex-direction:column;gap:4px;padding:10px 11px;border-radius:9px;background:#eef3ff;border-left:3px solid var(--blue)}
+.policy-fit small,.guidance-grid small{font-size:9px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.policy-fit b{font-size:12px}.policy-fit span{font-size:11px;line-height:1.5;color:#4d5b73}
+.policy-fit-strong{background:#eaf8f0;border-left-color:var(--green)}.policy-fit-weak{background:#fff0ed;border-left-color:var(--red)}.policy-fit-conditional{background:#fff7e8;border-left-color:var(--amber)}
+.guidance-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.guidance-grid>div{padding:10px;border-radius:9px;background:#fff;border:1px solid var(--line)}
+.guidance-grid p{font-size:11px;line-height:1.55;margin:6px 0 0;color:#4d5b73}
+.guidance-upside{border-top:2px solid var(--green)!important}.guidance-risk{border-top:2px solid var(--amber)!important}
+.guidance-watch{display:flex;flex-direction:column;gap:4px;padding:10px 11px;margin-top:8px;border-radius:9px;background:#f1f5f9}
+.guidance-watch b{font-size:11px}.guidance-watch span{font-size:11px;line-height:1.5;color:#4d5b73}
+.guidance-caveat{font-size:10px;line-height:1.5;color:var(--muted);margin:9px 1px 0}
+@media(max-width:520px){.guidance-grid{grid-template-columns:1fr}.policy-guidance{padding:9px}}
