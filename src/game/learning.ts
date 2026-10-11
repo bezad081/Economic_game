@@ -1,5 +1,6 @@
 import type { EconomySnapshot, LearningReview, PolicySpec } from './types';
 import { policyLag } from './transmission';
+import { TRANSMISSION } from './parameters';
 
 export function buildChannel(policy: PolicySpec): string {
   if (policy.tab === 'Monetary') return 'Interest rate / liquidity → real rate & credit → households and firms → demand → output, prices and jobs';
@@ -8,6 +9,12 @@ export function buildChannel(policy: PolicySpec): string {
   if (policy.tab === 'Trade') return 'Competitiveness → exports / imports → firm sales → output, FX and prices';
   return 'Emergency response → financial or household balance sheets → credit / demand → macro stability';
 }
+
+const sign = (x:number):number => Math.abs(x) < 1e-8 ? 0 : Math.sign(x);
+const alignmentScore = (expected:number, observed:number, deadband:number):number => {
+  if (Math.abs(expected) < 1e-8 || Math.abs(observed) < deadband) return 0;
+  return sign(expected) === sign(observed) ? 1 : -1;
+};
 
 export function assessPolicy(
   policy: PolicySpec,
@@ -19,27 +26,6 @@ export function assessPolicy(
   const dpi = after.inflation - before.inflation;
   const du = after.unemployment - before.unemployment;
   const dd = after.debtRatio - before.debt;
-  const expectedGrowth = policy.effects.growth ?? 0;
-  const expectedInflation = policy.effects.inflation ?? 0;
-  const expectedJobs = -(policy.effects.unemployment ?? 0);
-  const expectedDebtImprovement = -(policy.effects.debt ?? 0);
-
-  // Score only outcomes for which this policy has a stated expected direction.
-  // A zero/near-zero observed movement is inconclusive, not automatic success.
-  const signals = [
-    { expected: expectedGrowth, observed: dg, weight: 0.35, deadband: 0.0005 },
-    { expected: expectedInflation, observed: dpi, weight: 0.30, deadband: 0.0004 },
-    { expected: expectedJobs, observed: -du, weight: 0.20, deadband: 0.0004 },
-    { expected: expectedDebtImprovement, observed: -dd, weight: 0.15, deadband: 0.001 },
-  ].filter(x => Math.abs(x.expected) > 0.00005);
-  const totalWeight = signals.reduce((sum, x) => sum + x.weight, 0);
-  const alignment = totalWeight === 0 ? 0 : signals.reduce((sum, x) => {
-    if (Math.abs(x.observed) < x.deadband) return sum;
-    return sum + x.weight * (Math.sign(x.observed) === Math.sign(x.expected) ? 1 : -1);
-  }, 0) / totalWeight;
-
-  const outcome: LearningReview['outcome'] =
-    alignment > 0.25 ? 'favorable' : alignment < -0.25 ? 'unfavorable' : 'mixed';
   const elapsedQuarters = Math.max(0, after.turn - enactedTurn);
   const observedChanges = {
     growth: dg,
@@ -50,26 +36,56 @@ export function assessPolicy(
     investmentPct: before.investment === 0 ? 0 : ((after.investment / before.investment) - 1) * 100,
     consumptionPct: before.consumption === 0 ? 0 : ((after.consumption / before.consumption) - 1) * 100,
   };
+  // Grade the channels that the engine actually applies. Legacy policy.effects often
+  // describe intended outcomes, while transmissionEffects are the impulses actually
+  // passed through the simulation; mixing the two can falsely praise or blame a policy.
+  const active = policy.transmissionEffects ?? policy.effects;
+  const credit = active.credit ?? 0;
+  const confidence = active.confidence ?? 0;
+  const fiscal = active.fiscalDemand ?? 0;
+  const household = active.householdDemand ?? 0;
+  const expectedConsumption =
+    credit * TRANSMISSION.monetary.consumptionFromCredit +
+    confidence * TRANSMISSION.monetary.confidenceToConsumption +
+    fiscal * TRANSMISSION.fiscal.incomeToConsumption +
+    household * TRANSMISSION.monetary.householdDemandToConsumption;
+  const expectedInvestment =
+    credit * TRANSMISSION.monetary.investmentFromCredit +
+    confidence * TRANSMISSION.monetary.confidenceToInvestment +
+    fiscal * TRANSMISSION.firms.capacityToInvestment;
+  const expectedGovernment = fiscal * TRANSMISSION.fiscal.demandImpulseToGovernment;
+  const expectedDemand =
+    0.61 * expectedConsumption + 0.21 * expectedInvestment + 0.19 * expectedGovernment;
+  const signals = [
+    { score: alignmentScore(expectedDemand, dg, 0.0005), weight: 0.35 },
+    { score: alignmentScore(credit + (active.bank ?? 0) * 0.2, observedChanges.creditGrowth, 0.0005), weight: 0.25 },
+    { score: alignmentScore(expectedInvestment, observedChanges.investmentPct, 0.03), weight: 0.20 },
+    { score: alignmentScore(expectedConsumption, observedChanges.consumptionPct, 0.03), weight: 0.20 },
+  ].filter(x => x.score !== 0);
+  const totalWeight = signals.reduce((sum, x) => sum + x.weight, 0);
+  const alignment = totalWeight === 0 ? 0 : signals.reduce((sum, x) => sum + x.score * x.weight, 0) / totalWeight;
+  const outcome: LearningReview['outcome'] =
+    alignment > 0.25 ? 'favorable' : alignment < -0.25 ? 'unfavorable' : 'mixed';
   const lag = policyLag(policy.tab);
 
   const result =
     outcome === 'favorable'
-      ? 'The first observed movements broadly match the policy’s stated direction. This is an encouraging signal, not proof that the policy caused every change.'
+      ? 'The observed demand and credit channels broadly match the policy impulse. This is an encouraging signal, not proof that the policy caused every change.'
       : outcome === 'unfavorable'
-      ? 'The first observed movements conflict with at least one stated policy objective. Check the transmission channel, implementation timing and unrelated shocks before repeating it.'
-      : 'The first-quarter evidence is mixed or inconclusive. Policy trade-offs, delayed transmission and unrelated shocks can all explain why the indicators do not move together.';
+      ? 'The observed demand or credit channels conflict with the policy impulse. Check the transmission channel, implementation timing and unrelated shocks before repeating it.'
+      : 'The evidence is mixed or inconclusive. Small movements, policy trade-offs, delayed transmission and unrelated shocks can explain why indicators do not move together.';
 
   let mechanism = buildChannel(policy);
-  if (policy.tab === 'Monetary') {
-    mechanism = after.creditGrowth < before.creditGrowth
-      ? 'Credit tightened, so financing-sensitive consumption and investment were restrained.'
-      : 'Credit conditions remained supportive, allowing demand to transmit through households and firms.';
+  if (Math.abs(credit) > 1e-8 && after.creditGrowth < before.creditGrowth) {
+    mechanism = after.bankHealth < 0.55
+      ? 'Credit contracted while bank health is weak, so impaired intermediation may be limiting the policy channel.'
+      : 'Credit tightened, restraining financing-sensitive consumption and firm investment.';
   } else if (policy.tab === 'Fiscal') {
     mechanism = after.growth > before.growth
-      ? 'Demand support reached the economy through government demand and/or household disposable income.'
+      ? 'Demand support may be reaching the economy through government demand and/or household disposable income.'
       : 'The fiscal impulse was not enough to overcome other drags on private demand.';
   } else if (policy.tab === 'Trade') {
-    mechanism = 'Check export and import volumes, firm sales, the exchange rate and imported inflation together; any one indicator alone is not enough to identify the trade-policy channel.';
+    mechanism = 'Check export and import volumes, firm sales, the exchange rate and imported inflation together; one indicator alone is not enough to identify the trade-policy channel.';
   }
 
   const nextStep =
@@ -81,7 +97,7 @@ export function assessPolicy(
       ? 'Watch employment and household income before withdrawing support too quickly.'
       : after.debtRatio > 0.90
       ? 'Fiscal space is becoming more important; compare the policy benefit with its financing cost.'
-      : 'Advance another quarter before making a second intervention so the lagged effects can be observed.';
+      : 'Advance another quarter before making a second intervention so lagged effects can be observed.';
 
   return {
     policyId: policy.id,
