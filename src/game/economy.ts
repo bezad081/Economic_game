@@ -206,7 +206,16 @@ export class EconomyEngine {
     const newGap=(s.realGDP/s.potentialGDP)-1;
     s.outputGap=newGap;
     const importedInflation=.018*Math.max(-.15,s.exchangeRate-1)+.012*Math.max(0,.7-s.energySecurity);
-    s.coreInflation = clamp(.70*s.coreInflation + .18*s.inflationExpected + .12*.025 + .034*newGap + .010*Math.max(0,s.wageGrowth-.04) + (imp.inflation??0)*.72 + noise()*.0011,-.03,.25);
+    // Demand pressure is more inflationary when supply capacity is constrained; this makes
+    // identical stimulus less benign in an energy shock than in a deep demand recession.
+    const supplyConstraint = Math.max(0, .70-s.energySecurity);
+    const capacityPressure = Math.max(0, s.capacityUtilization-.78);
+    s.coreInflation = clamp(.70*s.coreInflation + .18*s.inflationExpected + .12*.025
+      + .034*newGap*(1+1.25*supplyConstraint)
+      + .010*Math.max(0,s.wageGrowth-.04)
+      + .010*capacityPressure
+      + .10*Math.max(0,tx.demandGrowth)
+      + (imp.inflation??0)*.72 + noise()*.0011,-.03,.25);
     s.inflation = clamp(.76*s.coreInflation + .24*(s.coreInflation+importedInflation) + (imp.inflation??0)*.28 + noise()*.0009,-.035,.30);
     s.unemployment = clamp(s.unemployment - .24*qGrowth + .08*(.052-s.unemployment) + (imp.unemployment??0) + noise()*.0012, .018,.28);
     s.wageGrowth=clamp(.58*s.wageGrowth+.25*s.inflationExpected+.17*(.025+s.productivity*.004)+.16*Math.max(0,.055-s.unemployment)+noise()*.0015,-.03,.20);
