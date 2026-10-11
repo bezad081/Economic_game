@@ -215,7 +215,9 @@ export class EconomyEngine {
     s.bankHealth = clamp(s.bankHealth + .030*qGrowth - .12*Math.max(0,s.unemployment-.08) - .055*Math.max(0,s.policyRate-.10) + (imp.bank??0) + noise()*.006, .08,1);
     s.exchangeRate = clamp(s.exchangeRate * (1 + .055*(s.inflation-.025) - .035*(s.policyRate-.04) + .025*(.65-s.bankHealth) + (imp.fx??0) + noise()*.004), .45,2.7);
 
-    s.primaryBalance = clamp(-.018 + .10*(s.debtRatio-.60) - .06*(s.growth-.02), -.12,.10);
+    // Fiscal impulses affect the primary balance as well as demand; otherwise stimulus/austerity
+    // would change spending without paying for it in the debt dynamics.
+    s.primaryBalance = clamp(-.018 + .10*(s.debtRatio-.60) - .06*(s.growth-.02) - .18*(imp.fiscalDemand??0), -.12,.10);
     s.treasury += (imp.treasury??0) - s.primaryBalance*10 + noise()*.4;
     s.sovereignSpread=clamp(.004+.035*Math.max(0,s.debtRatio-.65)+.025*Math.max(0,-s.primaryBalance-.03)+.020*(1-s.credibility)+.016*Math.max(0,.65-s.bankHealth),.002,.16);
     const rq=Math.max(-.01,s.policyRate+s.sovereignSpread)/4;
