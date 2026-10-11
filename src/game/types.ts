@@ -183,6 +183,14 @@ export interface Mission {
   targetText: string;
 }
 
+export interface PendingPolicyEvaluation {
+  id: string;
+  label: string;
+  tab: Exclude<Tab,'Advisor'>;
+  enactedTurn: number;
+  before: {growth:number;inflation:number;unemployment:number;debt:number;creditGrowth:number;investment:number;consumption:number};
+}
+
 export interface EconomySnapshot {
   year: number;
   quarter: number;
@@ -254,7 +262,10 @@ export interface EconomySnapshot {
   lastQuarterSummary: string;
   lastLearningNote: string;
   lastLearningReview: LearningReview | null;
-  pendingPolicy: {id:string; label:string; tab:Exclude<Tab,'Advisor'>; enactedTurn:number; before:{growth:number;inflation:number;unemployment:number;debt:number;creditGrowth:number;investment:number;consumption:number}} | null;
+  /** Oldest policy still waiting for its indicative transmission horizon (legacy UI compatibility). */
+  pendingPolicy: PendingPolicyEvaluation | null;
+  /** Queue prevents a new decision from erasing an earlier policy's learning review. */
+  pendingPolicies?: PendingPolicyEvaluation[];
   firms: FirmState[];
   households: HouseholdCohort[];
   election: ElectionState;
