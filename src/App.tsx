@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EconomyEngine } from './game/economy';
 import { POLICIES, policiesByTab } from './game/policies';
+import { policyPreviewGuidance } from './game/policyPreview';
 import { applyCrisisScenario, CRISIS_SCENARIOS } from './game/scenarios';
 import type { AdvisorRecommendation, EconomySnapshot, GameMode, PolicySpec, Tab } from './game/types';
 
@@ -188,6 +189,15 @@ function Preview({policy,now}:{policy:PolicySpec|null;now:EconomySnapshot}){if(!
   return <div className="preview">
     <div className="preview-policy"><b>{policy.label}</b><span>counterfactual model path</span></div>
     <div className="transmission-line"><small>TRANSMISSION</small><p>{channel}</p></div>
+    {(() => { const g=policyPreviewGuidance(policy,now); return <div className="policy-guidance">
+      <div className={`policy-fit policy-fit-${g.fit}`}><small>CRISIS FIT</small><b>{g.fitLabel}</b><span>{g.objective}</span></div>
+      <div className="guidance-grid">
+        <div className="guidance-upside"><small>Possible upside</small><p>{g.likelyUpside}</p></div>
+        <div className="guidance-risk"><small>Main risk / trade-off</small><p>{g.mainRisk}</p></div>
+      </div>
+      <div className="guidance-watch"><b>What to monitor next</b><span>{g.watch}</span></div>
+      <p className="guidance-caveat">This is a stylized counterfactual, not a guaranteed forecast. The model path is conditional on its assumptions and may not capture every shock or policy interaction.</p>
+    </div> })()}
     <div className="forecast-head"><span>Change vs no-policy path</span>{horizons.map(h=><b key={h.q}>Q+{h.q}</b>)}</div>
     {[['GDP growth','growth'],['Inflation','inflation'],['Unemployment','unemployment'],['Debt ratio','debtRatio']].map(([label,key])=><div className="forecast-row" key={label as string}><span>{label}</span>{horizons.map(h=>{const d=delta(h.s,h.b,key as keyof EconomySnapshot);return <b className={d>0?'delta-up':d<0?'delta-down':''} key={h.q}>{d>=0?'+':''}{(d*100).toFixed(2)}pp</b>})}</div>)}
     <div className="preview-risk"><b>Main trade-off</b><span>{policy.tradeoff}</span></div>
