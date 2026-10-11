@@ -5,6 +5,7 @@ import { transmitDemand, policyLag } from '../src/game/transmission';
 import { POLICIES } from '../src/game/policies';
 import { assessPolicy } from '../src/game/learning';
 import { policyPreviewGuidance } from '../src/game/policyPreview';
+import { strategicBrief } from '../src/game/strategy';
 
 describe('economic model invariants', () => {
   it('initializes every crisis with a coherent baseline and opening event', () => {
@@ -298,6 +299,48 @@ describe('economic model invariants', () => {
 
 });
 
+
+describe('strategic advisor', () => {
+  it('prioritizes supply resilience rather than broad demand stimulus during an energy constraint', () => {
+    const econ = new EconomyEngine('sandbox').snapshot();
+    econ.scenarioId = 'energy';
+    econ.energySecurity = 0.38;
+    econ.inflation = 0.095;
+    const brief = strategicBrief(econ);
+    expect(brief.diagnosis).toContain('Supply capacity');
+    expect(brief.priority).toContain('energy');
+    expect(brief.avoid).toContain('Broad demand stimulus');
+    expect(brief.focus).toContain('capacity utilization');
+  });
+
+  it('uses the most severe active crisis and exposes its response goal', () => {
+    const econ = new EconomyEngine('mission').snapshot();
+    econ.activeEvents = [{
+      id: 'test-crisis', kind: 'energy', title: 'Power shortage', description: 'Grid stress',
+      severity: 5, startedTurn: 0, deadlineTurn: 2, responsePolicyIds: ['energy_subsidy'],
+      responseLabel: 'Protect essential energy supply', learning: 'Supply bottlenecks reduce output',
+      status: 'active', consequence: 'Factory output and wages may fall'
+    }];
+    const brief = strategicBrief(econ);
+    expect(brief.diagnosis).toContain('Power shortage');
+    expect(brief.priority).toContain('Protect essential energy supply');
+    expect(brief.avoid).toContain('event deadline');
+  });
+
+  it('connects the previous policy review to the next strategic decision', () => {
+    const econ = new EconomyEngine('sandbox').snapshot();
+    econ.lastLearningReview = {
+      policyId: 'stimulus', policyLabel: 'Demand support', policyTab: 'Fiscal',
+      enactedTurn: 0, observedTurn: 2, elapsedQuarters: 2,
+      observedChanges: {growth: 0.01, inflation: 0.005, unemployment: -0.01, debt: 0.02, creditGrowth: 0.01, investmentPct: 2, consumptionPct: 1},
+      channel: 'Fiscal demand', lagQuarters: 1, outcome: 'mixed',
+      result: 'The observed evidence is mixed.', mechanism: 'Demand increased.',
+      tradeoff: 'Debt versus jobs', nextStep: 'Watch inflation.'
+    };
+    expect(strategicBrief(econ).learning).toContain('Demand support was mixed');
+    expect(strategicBrief(econ).learning).toContain('not proof of causality');
+  });
+});
 
 describe('scenario-aware policy preview', () => {
   it('explains why demand stimulus fits recession better than an energy bottleneck', () => {
