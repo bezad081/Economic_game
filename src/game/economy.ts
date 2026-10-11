@@ -75,6 +75,9 @@ export class EconomyEngine {
   refreshMission(){
     this.state.activeMission = this.state.mode === 'mission' ? this.chooseMission() : null;
     this.missionHold = 0;
+    // Scenario resets clear history; record the new baseline before the first quarter advances.
+    if(!this.state.history.length) this.recordHistory();
+    if(!this.state.news.length) this.pushNews(`${this.state.regime} scenario initialized. The opening event has a limited response window.`, 'neutral');
   }
 
   setMode(mode:GameMode){
