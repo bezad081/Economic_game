@@ -88,4 +88,53 @@ describe('economic model invariants', () => {
     expect(engine.state.unemployment).toBeGreaterThanOrEqual(0);
     expect(engine.state.unemployment).toBeLessThanOrEqual(1);
   });
+
+  it('makes monetary tightening and easing produce opposite credit conditions over the same seeded path', () => {
+    const tightening = new EconomyEngine('sandbox');
+    const easing = new EconomyEngine('sandbox');
+    expect(tightening.enact('rate_up').ok).toBe(true);
+    expect(easing.enact('rate_down').ok).toBe(true);
+
+    // The policy rate changes immediately; credit and demand transmission then unfolds with lags.
+    for (let quarter = 0; quarter < 3; quarter += 1) {
+      tightening.stepQuarter();
+      easing.stepQuarter();
+    }
+
+    expect(tightening.state.policyRate).toBeGreaterThan(easing.state.policyRate);
+    expect(tightening.state.creditGrowth).toBeLessThan(easing.state.creditGrowth);
+  });
+
+  it('keeps the signs of credit and household-demand transmission economically coherent', () => {
+    const engine = new EconomyEngine('sandbox');
+    const baseline = engine.snapshot();
+    const easing = transmitDemand(baseline, { credit: 0.04, householdDemand: 0.02 });
+    const tightening = transmitDemand(baseline, { credit: -0.04, householdDemand: -0.02 });
+
+    expect(easing.credit).toBeGreaterThan(0);
+    expect(easing.consumption).toBeGreaterThan(0);
+    expect(easing.investment).toBeGreaterThan(0);
+    expect(easing.demandGrowth).toBeGreaterThan(0);
+    expect(tightening.credit).toBeLessThan(0);
+    expect(tightening.consumption).toBeLessThan(0);
+    expect(tightening.investment).toBeLessThan(0);
+    expect(tightening.demandGrowth).toBeLessThan(0);
+  });
+
+  it('gives banking and energy crises different opening diagnosis and response menus', () => {
+    const engine = new EconomyEngine('mission');
+    const banking = engine.snapshot();
+    const energy = engine.snapshot();
+    applyCrisisScenario(banking, 'banking');
+    applyCrisisScenario(energy, 'energy');
+
+    expect(banking.activeEvents[0].kind).toBe('banking');
+    expect(banking.activeEvents[0].responsePolicyIds).toContain('bank_recap');
+    expect(energy.activeEvents[0].kind).toBe('energy');
+    expect(energy.activeEvents[0].responsePolicyIds).toContain('energy_subsidy');
+    expect(energy.activeEvents[0].responsePolicyIds).not.toEqual(banking.activeEvents[0].responsePolicyIds);
+    expect(banking.bankHealth).toBeLessThan(energy.bankHealth);
+    expect(energy.energySecurity).toBeLessThan(banking.energySecurity);
+  });
+
 });
