@@ -137,4 +137,20 @@ describe('economic model invariants', () => {
     expect(energy.energySecurity).toBeLessThan(banking.energySecurity);
   });
 
+
+  it('makes fiscal stimulus weaken and fiscal repair strengthen the primary balance', () => {
+    const stimulus = new EconomyEngine('sandbox');
+    const repair = new EconomyEngine('sandbox');
+    expect(stimulus.enact('stimulus').ok).toBe(true);
+    expect(repair.enact('austerity').ok).toBe(true);
+
+    for (let quarter = 0; quarter < 3; quarter += 1) {
+      stimulus.stepQuarter();
+      repair.stepQuarter();
+    }
+
+    expect(stimulus.state.primaryBalance).toBeLessThan(repair.state.primaryBalance);
+    expect(stimulus.state.debtRatio).toBeGreaterThan(repair.state.debtRatio);
+  });
+
 });
