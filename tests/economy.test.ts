@@ -68,7 +68,7 @@ describe('economic model invariants', () => {
     };
     const review = assessPolicy(POLICIES.find(p => p.id === 'rate_up')!, 0, before, after);
     expect(review.outcome).toBe('unfavorable');
-    expect(review.result).toContain('transmission channels');
+    expect(review.result).toContain('conflict with the policy impulse');
   });
 
   it('allows a valid policy to be enacted and advances the model without non-finite core values', () => {
