@@ -15,7 +15,7 @@ class RNG {
 }
 
 const initial = (mode:GameMode):EconomySnapshot => ({
-  year:2027, quarter:1, turn:0, mode,
+  year:2027, quarter:1, turn:0, mode, scenarioId:'stagflation',
   realGDP:1018, potentialGDP:1000, consumption:620, investment:210, governmentSpending:190, netExports:-2, householdIncome:2.35, householdSavings:.58, firmSales:94, firmInvestment:4.5, capacityUtilization:.78, growth:.028,
   inflation:.034, coreInflation:.031, inflationExpected:.032, wageGrowth:.038, realWageGrowth:.004, unemployment:.055, outputGap:.018,
   policyRate:.045, realRate:.013, credibility:.74,
@@ -47,6 +47,7 @@ export class EconomyEngine {
     if(!this.state.households) this.state.households=seedHouseholds();
     if(!this.state.election) this.state.election={lastElectionTurn:0,nextElectionTurn:16,incumbentShare:.54,oppositionShare:.46,turnout:.68,campaignActive:false,lastResult:'No election held yet'};
     this.state.bankruptcies ??= 0; this.state.firmBirths ??= 0; this.state.totalEmployment ??= 0; this.state.averageWage ??= 1;
+    this.state.scenarioId ??= 'stagflation';
     this.state.fiscalDemand ??= 0;
     this.state.consumption ??= this.state.realGDP*.61;
     this.state.investment ??= this.state.realGDP*.21;
@@ -454,7 +455,17 @@ export class EconomyEngine {
       {id:'stability',title:'Chapter 14 · The Policy Mix',description:'Manage inflation, employment, growth and bank health together; one good KPI is not enough.',deadline:s.turn+12,progress:0,targetText:'Inflation < 4%, unemployment < 6%, growth > 1%, bank health > 65%'},
       {id:'national',title:'Chapter 15 · The National Economic Review',description:'Finish with a balanced economy: durable growth, price stability, resilience and public welfare.',deadline:s.turn+12,progress:0,targetText:'National score above 75'},
     ];
-    return chapters[Math.min(s.missionsCompleted,chapters.length-1)];
+    const orderByScenario:Record<string,string[]> = {
+      stagflation:['prices','jobs','banks','debt','technology','energy','poverty','inequality','housing','credibility','external','fiscal','investment','stability','national'],
+      recession:['jobs','investment','prices','banks','poverty','fiscal','debt','technology','energy','inequality','housing','credibility','external','stability','national'],
+      banking:['banks','jobs','debt','investment','prices','fiscal','credibility','technology','energy','poverty','inequality','housing','external','stability','national'],
+      debt:['debt','fiscal','jobs','prices','banks','credibility','investment','technology','energy','poverty','inequality','housing','external','stability','national'],
+      energy:['energy','prices','jobs','investment','fiscal','banks','debt','technology','poverty','inequality','housing','credibility','external','stability','national'],
+    };
+    const order=orderByScenario[s.scenarioId]??orderByScenario.stagflation;
+    const byId=new Map(chapters.map(chapter=>[chapter.id,chapter]));
+    const ordered=order.map(id=>byId.get(id)).filter(Boolean) as Mission[];
+    return (ordered.length===chapters.length?ordered:chapters)[Math.min(s.missionsCompleted,chapters.length-1)];
   }
 
   private missionProgress(m:Mission){
