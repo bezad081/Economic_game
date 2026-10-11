@@ -188,6 +188,7 @@ export interface EconomySnapshot {
   quarter: number;
   turn: number;
   mode: GameMode;
+  scenarioId: string;
   realGDP: number;
   potentialGDP: number;
   consumption: number;
