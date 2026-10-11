@@ -95,6 +95,19 @@ export function applyCrisisScenario(s: EconomySnapshot, id: string): void {
     s.lastLearningNote = 'High debt and sovereign spreads threaten refinancing. Credible medium-term adjustment matters, but abrupt cuts can depress GDP and worsen the debt ratio denominator.';
   }
 
+  const eventByScenario = {
+    stagflation: { kind: 'wages' as const, title: 'Inflation expectations harden', description: 'Households and firms are starting to build recent price increases into wage demands and pricing decisions.', responsePolicyIds: ['rate_up','food_subsidy','business_reform'], responseLabel: 'Limit second-round inflation without crushing demand', learning: 'A temporary price shock can become persistent when expectations and wages adjust.' },
+    recession: { kind: 'global' as const, title: 'External demand slump', description: 'Trading partners are cutting orders, leaving exporters with weaker sales and firms considering layoffs.', responsePolicyIds: ['rate_down','welfare_up','export_support'], responseLabel: 'Support viable demand and employment', learning: 'External shocks reduce domestic output through exports, investment and confidence.' },
+    banking: { kind: 'banking' as const, title: 'Credit market freeze', description: 'Banks are restricting lending as asset quality deteriorates; firms may lose working capital even if they remain viable.', responsePolicyIds: ['bank_recap','sme_credit','qe'], responseLabel: 'Restore credit intermediation', learning: 'Liquidity cannot fully solve insolvency; bank capital and lending incentives matter.' },
+    debt: { kind: 'debt' as const, title: 'Refinancing window narrows', description: 'Investors are demanding a larger risk premium and the treasury has limited room to absorb shocks.', responsePolicyIds: ['austerity','income_tax_up','business_reform'], responseLabel: 'Rebuild credibility while protecting capacity', learning: 'Debt dynamics depend on interest costs, the primary balance and the GDP denominator.' },
+    energy: { kind: 'energy' as const, title: 'Energy supply disruption', description: 'Fuel and electricity constraints are raising costs and threatening output across energy-intensive sectors.', responsePolicyIds: ['energy_subsidy','infra_up','food_subsidy'], responseLabel: 'Protect essential supply and vulnerable households', learning: 'Supply shocks require a different mix from demand-driven inflation.' },
+  };
+  const event = eventByScenario[id as keyof typeof eventByScenario] ?? eventByScenario.stagflation;
+  s.activeEvents = [{
+    id: `opening-${id}`, kind: event.kind, title: event.title, description: event.description,
+    severity: 4, startedTurn: 0, deadlineTurn: 4, responsePolicyIds: event.responsePolicyIds,
+    responseLabel: event.responseLabel, learning: event.learning, status: 'active',
+  }];
   s.realWageGrowth = s.wageGrowth - s.inflation;
   s.realRate = s.policyRate - s.inflationExpected;
   s.netExports = s.exports - s.imports;
