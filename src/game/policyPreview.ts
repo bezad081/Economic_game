@@ -28,7 +28,7 @@ export function policyPreviewGuidance(policy: PolicySpec, s: EconomySnapshot): P
       return { objective:'Relieve the supply bottleneck and protect essential activity.', likelyUpside:'Targeted relief can cushion households while resilience and capacity measures address the source of lost output.', mainRisk:'Relief costs money; infrastructure and supply-side reforms take time, and broad subsidies can weaken conservation incentives.', watch:'Energy security, capacity utilization, inflation, real wages and treasury.', fit:'strong', fitLabel:'Addresses the supply shock' };
     }
     if (['stimulus','income_tax_down','rate_down'].includes(policy.id)) {
-      return { objective:'Support demand while production is constrained.', likelyUpside:'May cushion household spending and prevent an unnecessarily sharp slowdown.', mainRisk:'When energy limits supply, extra demand can pass into prices more than output.', watch:'Inflation, energy security, capacity utilization and real wage growth.', fit:'weak', fitLabel:'Inflation trade-off is high' };
+      return { objective:'Support demand while production is constrained.', likelyUpside:'May cushion household spending and prevent an unnecessarily sharp slowdown.', mainRisk:'When energy limits supply, extra demand can pass into prices more than output.', watch:'Inflation, Energy security, capacity utilization and real wage growth.', fit:'weak', fitLabel:'Inflation trade-off is high' };
     }
   }
   if (id === 'banking') {
