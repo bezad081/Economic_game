@@ -153,4 +153,36 @@ describe('economic model invariants', () => {
     expect(stimulus.state.debtRatio).toBeGreaterThan(repair.state.debtRatio);
   });
 
+
+  it('makes the same fiscal stimulus more inflationary under an energy supply constraint than in a demand recession', () => {
+    const energyBaseline = new EconomyEngine('sandbox');
+    const energyStimulus = new EconomyEngine('sandbox');
+    const recessionBaseline = new EconomyEngine('sandbox');
+    const recessionStimulus = new EconomyEngine('sandbox');
+
+    applyCrisisScenario(energyBaseline.state, 'energy');
+    applyCrisisScenario(energyStimulus.state, 'energy');
+    applyCrisisScenario(recessionBaseline.state, 'recession');
+    applyCrisisScenario(recessionStimulus.state, 'recession');
+
+    const energyStart = energyStimulus.state.inflation;
+    const recessionStart = recessionStimulus.state.inflation;
+    expect(energyStimulus.enact('stimulus').ok).toBe(true);
+    expect(recessionStimulus.enact('stimulus').ok).toBe(true);
+
+    for (let quarter = 0; quarter < 4; quarter += 1) {
+      energyBaseline.stepQuarter();
+      energyStimulus.stepQuarter();
+      recessionBaseline.stepQuarter();
+      recessionStimulus.stepQuarter();
+    }
+
+    const energyStimulusInflationEffect = (energyStimulus.state.inflation - energyStart)
+      - (energyBaseline.state.inflation - 0.095);
+    const recessionStimulusInflationEffect = (recessionStimulus.state.inflation - recessionStart)
+      - (recessionBaseline.state.inflation - 0.025);
+
+    expect(energyStimulusInflationEffect).toBeGreaterThan(recessionStimulusInflationEffect);
+  });
+
 });
