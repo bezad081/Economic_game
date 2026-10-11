@@ -118,7 +118,7 @@ describe('economic model invariants', () => {
 
     expect(engine.state.pendingPolicies).toHaveLength(0);
     expect(['rate_up', 'business_reform']).toContain(engine.state.lastLearningReview?.policyId);
-    expect(engine.state.news.some(item => item.text.includes('Learning review ready: rate_up'))).toBe(true);
+    expect(engine.state.news.some(item => item.text.includes('Learning review ready: Rate +50bp'))).toBe(true);
     expect(engine.state.news.some(item => item.text.includes('Learning review ready: Business Reform'))).toBe(true);
   });
 
