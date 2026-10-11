@@ -4,6 +4,7 @@ import { applyCrisisScenario, CRISIS_SCENARIOS } from '../src/game/scenarios';
 import { transmitDemand, policyLag } from '../src/game/transmission';
 import { POLICIES } from '../src/game/policies';
 import { assessPolicy } from '../src/game/learning';
+import { policyPreviewGuidance } from '../src/game/policyPreview';
 
 describe('economic model invariants', () => {
   it('initializes every crisis with a coherent baseline and opening event', () => {
@@ -239,4 +240,45 @@ describe('economic model invariants', () => {
     expect(recessionOutputEffect).toBeGreaterThan(energyOutputEffect);
   });
 
+});
+
+
+describe('scenario-aware policy preview', () => {
+  it('explains why demand stimulus fits recession better than an energy bottleneck', () => {
+    const engine = new EconomyEngine('mission');
+    const recession = engine.snapshot();
+    const energy = engine.snapshot();
+    applyCrisisScenario(recession, 'recession');
+    applyCrisisScenario(energy, 'energy');
+    const stimulus = POLICIES.find(p => p.id === 'stimulus')!;
+    const recessionGuide = policyPreviewGuidance(stimulus, recession);
+    const energyGuide = policyPreviewGuidance(stimulus, energy);
+    expect(recessionGuide.fit).toBe('strong');
+    expect(recessionGuide.likelyUpside).toContain('Spare capacity');
+    expect(energyGuide.fit).toBe('weak');
+    expect(energyGuide.mainRisk).toContain('supply');
+    expect(energyGuide.watch).toContain('Energy security');
+  });
+
+  it('flags fiscal-space risks during a sovereign debt crisis', () => {
+    const engine = new EconomyEngine('mission');
+    const debt = engine.snapshot();
+    applyCrisisScenario(debt, 'debt');
+    const stimulus = POLICIES.find(p => p.id === 'stimulus')!;
+    const guidance = policyPreviewGuidance(stimulus, debt);
+    expect(guidance.fit).toBe('conditional');
+    expect(guidance.mainRisk).toContain('fiscal space');
+    expect(guidance.watch).toContain('Sovereign spread');
+  });
+
+  it('provides monitor indicators and an explicit trade-off for every policy', () => {
+    const econ = new EconomyEngine('sandbox').snapshot();
+    for (const policy of POLICIES) {
+      const guidance = policyPreviewGuidance(policy, econ);
+      expect(guidance.objective.length).toBeGreaterThan(10);
+      expect(guidance.likelyUpside.length).toBeGreaterThan(10);
+      expect(guidance.mainRisk.length).toBeGreaterThan(5);
+      expect(guidance.watch.length).toBeGreaterThan(5);
+    }
+  });
 });
