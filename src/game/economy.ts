@@ -30,7 +30,7 @@ const initial = (mode:GameMode):EconomySnapshot => ({
   fci:50, macroRisk:10, regime:'Balanced Expansion', nationalScore:62,
   missionScore:0, missionsCompleted:0,
   activeMission:null, activeEvents:[], eventHistory:[], impulses:[], cooldowns:{}, news:[], history:[],
-  lastPolicy:'No policy enacted yet.', lastQuarterSummary:'Economy initialized.', lastLearningNote:'Start by reading the regime, risks and policy transmission map.', lastLearningReview:null, pendingPolicy:null,
+  lastPolicy:'No policy enacted yet.', lastQuarterSummary:'Economy initialized.', lastLearningNote:'Start by reading the regime, risks and policy transmission map.', lastLearningReview:null, pendingPolicy:null, pendingPolicies:[],
   firms:seedFirms(), households:seedHouseholds(),
   election:{lastElectionTurn:0,nextElectionTurn:16,incumbentShare:.54,oppositionShare:.46,turnout:.68,campaignActive:false,lastResult:'No election held yet'},
   bankruptcies:0, firmBirths:0, totalEmployment:0, averageWage:1.0
@@ -48,6 +48,8 @@ export class EconomyEngine {
     if(!this.state.election) this.state.election={lastElectionTurn:0,nextElectionTurn:16,incumbentShare:.54,oppositionShare:.46,turnout:.68,campaignActive:false,lastResult:'No election held yet'};
     this.state.bankruptcies ??= 0; this.state.firmBirths ??= 0; this.state.totalEmployment ??= 0; this.state.averageWage ??= 1;
     this.state.scenarioId ??= 'stagflation';
+    // Migrate saved games created before the policy-review queue existed.
+    this.state.pendingPolicies ??= this.state.pendingPolicy ? [this.state.pendingPolicy] : [];
     this.state.fiscalDemand ??= 0;
     this.state.consumption ??= this.state.realGDP*.61;
     this.state.investment ??= this.state.realGDP*.21;
@@ -109,7 +111,10 @@ export class EconomyEngine {
     if (id === 'support_fx') this.state.fxReserves = clamp(this.state.fxReserves-4, 0, 80);
     const matched=this.state.activeEvents.find(e=>e.status==='active'&&e.responsePolicyIds.includes(id));
     if(matched){matched.status='responded';matched.resolvedBy=policy.label;this.state.politicalCapital=clamp(this.state.politicalCapital+3,0,100);this.pushNews(`Policy response matched the ${matched.title} event.`, 'good');}
-    this.state.pendingPolicy = { id:policy.id, label:policy.label, tab:policy.tab, enactedTurn:this.state.turn, before:{growth:this.state.growth,inflation:this.state.inflation,unemployment:this.state.unemployment,debt:this.state.debtRatio,creditGrowth:this.state.creditGrowth,investment:this.state.investment,consumption:this.state.consumption} };
+    const pendingEvaluation = { id:policy.id, label:policy.label, tab:policy.tab, enactedTurn:this.state.turn, before:{growth:this.state.growth,inflation:this.state.inflation,unemployment:this.state.unemployment,debt:this.state.debtRatio,creditGrowth:this.state.creditGrowth,investment:this.state.investment,consumption:this.state.consumption} };
+    this.state.pendingPolicies ??= this.state.pendingPolicy ? [this.state.pendingPolicy] : [];
+    this.state.pendingPolicies.push(pendingEvaluation);
+    this.state.pendingPolicy = this.state.pendingPolicies[0] ?? null;
     this.state.lastPolicy = `${policy.label}: ${policy.description}`;
     this.pushNews(`Cabinet enacted ${policy.label}. Effects will transmit over ${policy.duration} quarters.`, 'neutral');
     return {ok:true, reason:'Enacted'};
@@ -278,18 +283,23 @@ export class EconomyEngine {
     this.randomDevelopment();
     this.recordHistory();
     s.lastQuarterSummary = `${periodLabel(s.year,s.quarter)} • GDP growth ${s.growth>=0?'+':''}${(s.growth*100).toFixed(1)}% (real GDP ${s.realGDP-before.gdp>=0?'+':''}${(s.realGDP-before.gdp).toFixed(1)}) • inflation ${(s.inflation*100).toFixed(2)}% (${(s.inflation-before.inflation)*100>=0?'+':''}${((s.inflation-before.inflation)*100).toFixed(2)} pp) • unemployment ${(s.unemployment*100).toFixed(2)}% (${(s.unemployment-before.u)*100>=0?'+':''}${((s.unemployment-before.u)*100).toFixed(2)} pp) • debt ${(s.debtRatio*100).toFixed(1)}%.`;
-    if(s.pendingPolicy){
-      const p=policyById(s.pendingPolicy.id);
-      const elapsed=s.turn-s.pendingPolicy.enactedTurn;
-      // Wait for the policy family's indicative transmission lag before judging the outcome.
-      // This avoids grading structural or trade policies on effects that have not had time to arrive.
-      if(p && elapsed>=policyLag(p.tab)){
-        s.lastLearningReview=assessPolicy(p,s.pendingPolicy.enactedTurn,s.pendingPolicy.before,s);
-        s.pendingPolicy=null;
-      } else if(!p) {
-        s.pendingPolicy=null;
+    // Evaluate every decision once its indicative horizon has elapsed. Keeping a queue
+    // means a later policy cannot silently erase an earlier policy's learning opportunity.
+    const pendingReviews = s.pendingPolicies ?? (s.pendingPolicy ? [s.pendingPolicy] : []);
+    const remainingReviews = [];
+    for (const pending of pendingReviews) {
+      const p = policyById(pending.id);
+      const elapsed = s.turn - pending.enactedTurn;
+      if (!p) continue;
+      if (elapsed >= policyLag(p.tab)) {
+        s.lastLearningReview = assessPolicy(p, pending.enactedTurn, pending.before, s);
+        this.pushNews(`Learning review ready: ${p.label} after ${elapsed} quarter(s). Compare the observed channels with the original objective.`, 'neutral');
+      } else {
+        remainingReviews.push(pending);
       }
     }
+    s.pendingPolicies = remainingReviews;
+    s.pendingPolicy = remainingReviews[0] ?? null;
     s.lastLearningNote=this.learningNote(before);
     this.pushNews(`Quarter closed: ΔGDP ${(s.realGDP-before.gdp).toFixed(1)}, inflation ${((s.inflation-before.inflation)*100).toFixed(1)}pp, unemployment ${((s.unemployment-before.u)*100).toFixed(1)}pp.`, s.growth>=0?'good':'bad');
   }
