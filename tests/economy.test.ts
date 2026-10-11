@@ -185,6 +185,34 @@ describe('economic model invariants', () => {
     expect(energyStimulusInflationEffect).toBeGreaterThan(recessionStimulusInflationEffect);
   });
 
+  it('gives crisis-specific learning guidance for recession and energy supply shocks', () => {
+    const engine = new EconomyEngine('sandbox');
+    const policy = POLICIES.find(p => p.id === 'stimulus')!;
+    const before = {
+      growth: 0, inflation: 0.03, unemployment: 0.08, debt: 0.6,
+      creditGrowth: 0, investment: 200, consumption: 600,
+    };
+    const energyAfter = {
+      ...engine.snapshot(), scenarioId: 'energy', turn: 2, growth: 0.01,
+      inflation: 0.10, unemployment: 0.08, debtRatio: 0.61,
+      creditGrowth: 0.01, investment: 202, consumption: 603,
+    };
+    const recessionAfter = {
+      ...engine.snapshot(), scenarioId: 'recession', turn: 2, growth: 0.01,
+      inflation: 0.03, unemployment: 0.12, debtRatio: 0.61,
+      creditGrowth: 0.01, investment: 202, consumption: 603,
+    };
+
+    const energyReview = assessPolicy(policy, 0, before, energyAfter);
+    const recessionReview = assessPolicy(policy, 0, before, recessionAfter);
+
+    expect(energyReview.mechanism).toContain('Energy scarcity');
+    expect(energyReview.nextStep).toContain('targeted relief or supply resilience');
+    expect(recessionReview.mechanism).toContain('negative output gap');
+    expect(recessionReview.nextStep).toContain('demand and employment');
+    expect(energyReview.nextStep).not.toBe(recessionReview.nextStep);
+  });
+
   it('delivers a larger real-output response to fiscal stimulus in a deep recession than under an energy bottleneck', () => {
     const recessionBaseline = new EconomyEngine('sandbox');
     const recessionStimulus = new EconomyEngine('sandbox');
