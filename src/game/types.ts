@@ -10,8 +10,6 @@ export interface FirmState {
   employees: number;
   wage: number;
   productivity: number;
-  /** Persistent stock of implemented reforms that gradually lifts productive capacity. */
-  structuralCapital: number;
   cash: number;
   leverage: number;
   health: number;
@@ -240,6 +238,8 @@ export interface EconomySnapshot {
   inequality: number;
   technology: number;
   productivity: number;
+  /** Persistent stock of implemented reforms that gradually lifts productive capacity. */
+  structuralCapital: number;
   energySecurity: number;
   emissions: number;
   corruption: number;
