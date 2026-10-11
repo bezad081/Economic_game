@@ -10,6 +10,8 @@ export interface FirmState {
   employees: number;
   wage: number;
   productivity: number;
+  /** Persistent stock of implemented reforms that gradually lifts productive capacity. */
+  structuralCapital: number;
   cash: number;
   leverage: number;
   health: number;
