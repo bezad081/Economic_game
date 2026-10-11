@@ -88,7 +88,36 @@ export function assessPolicy(
     mechanism = 'Check export and import volumes, firm sales, the exchange rate and imported inflation together; one indicator alone is not enough to identify the trade-policy channel.';
   }
 
-  const nextStep =
+  // Translate the same observed result into advice that fits the active crisis.
+  // This keeps the advisor from giving a generic "stimulate demand" message in a supply shock.
+  const scenarioContext: Record<string, { mechanism: string; nextStep: string }> = {
+    recession: {
+      mechanism: 'With a large negative output gap, idle capacity means demand support can translate into more production and jobs; still monitor debt and whether credit reaches viable firms.',
+      nextStep: 'Prioritize demand and employment while spare capacity is large; reassess debt and inflation after the policy lag before adding another broad stimulus.'
+    },
+    energy: {
+      mechanism: 'Energy scarcity limits how quickly firms can raise output, so extra demand can leak into prices. Protect essential supply and vulnerable households rather than relying on broad stimulus alone.',
+      nextStep: 'Check energy security, capacity utilization and inflation together. Prefer targeted relief or supply resilience if prices rise while output remains constrained.'
+    },
+    stagflation: {
+      mechanism: 'This is a stagflation trade-off: supporting demand may protect jobs but can prolong inflation, while tightening can cool prices at the cost of weaker activity.',
+      nextStep: 'Balance inflation persistence against unemployment. Avoid judging success from growth alone; watch inflation expectations and real wages before repeating the intervention.'
+    },
+    banking: {
+      mechanism: 'When bank health is weak, liquidity or lower rates may not restore lending by themselves; bank capital and the flow of credit to viable firms also matter.',
+      nextStep: 'Track bank health and credit growth before adding broad demand support. If lending remains frozen, prioritize repairing intermediation and protecting viable firms.'
+    },
+    debt: {
+      mechanism: 'High sovereign spreads and a weak primary balance constrain fiscal room; abrupt cuts can weaken GDP and partly offset the improvement in the debt ratio.',
+      nextStep: 'Compare the primary balance and sovereign spread with growth. Favor a credible medium-term repair path over repeated abrupt cuts that could deepen the contraction.'
+    }
+  };
+  const context = scenarioContext[after.scenarioId];
+  if (context) {
+    mechanism = context.mechanism;
+  }
+
+  const genericNextStep =
     elapsedQuarters < lag
       ? `This is an early signal: only ${elapsedQuarters} quarter(s) have passed against an indicative ${lag}-quarter lag. Monitor the relevant channel before making another large adjustment.`
       : after.inflation > 0.06
@@ -98,6 +127,9 @@ export function assessPolicy(
       : after.debtRatio > 0.90
       ? 'Fiscal space is becoming more important; compare the policy benefit with its financing cost.'
       : 'Advance another quarter before making a second intervention so lagged effects can be observed.';
+  const nextStep = context
+    ? `${genericNextStep} Scenario guidance: ${context.nextStep}`
+    : genericNextStep;
 
   return {
     policyId: policy.id,
