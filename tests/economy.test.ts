@@ -122,6 +122,30 @@ describe('economic model invariants', () => {
     expect(engine.state.news.some(item => item.text.includes('Learning review ready: Business Reform'))).toBe(true);
   });
 
+  it('turns structural reform into a persistent capacity stock', () => {
+    const engine = new EconomyEngine('sandbox');
+    const startingCapital = engine.state.structuralCapital;
+    expect(startingCapital).toBeCloseTo(0.20, 8);
+    expect(engine.enact('business_reform').ok).toBe(true);
+    expect(engine.state.structuralCapital).toBeGreaterThan(startingCapital);
+    const afterEnactment = engine.state.structuralCapital;
+
+    for (let quarter = 0; quarter < 8; quarter += 1) engine.stepQuarter();
+
+    // Benefits persist after the short-run impulse starts fading, with only slight depreciation.
+    expect(engine.state.structuralCapital).toBeGreaterThan(startingCapital + 0.07);
+    expect(engine.state.structuralCapital).toBeLessThan(afterEnactment);
+    expect(engine.state.news.some(item => item.text.includes('Long-run reform stock increased'))).toBe(true);
+    expect(Number.isFinite(engine.state.potentialGDP)).toBe(true);
+  });
+
+  it('migrates older saved games that do not have structural capital yet', () => {
+    const saved = new EconomyEngine('sandbox').snapshot() as any;
+    delete saved.structuralCapital;
+    const restored = new EconomyEngine('sandbox', saved);
+    expect(restored.state.structuralCapital).toBeCloseTo(0.20, 8);
+  });
+
   it('makes monetary tightening and easing produce opposite credit conditions over the same seeded path', () => {
     const tightening = new EconomyEngine('sandbox');
     const easing = new EconomyEngine('sandbox');
