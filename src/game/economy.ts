@@ -24,7 +24,7 @@ const initial = (mode:GameMode):EconomySnapshot => ({
   bankHealth:.79, creditGrowth:.038, exchangeRate:1.0,
   housingIndex:100, housingAffordability:.72,
   poverty:.112, inequality:.36,
-  technology:72, productivity:1.0, energySecurity:.73, emissions:100,
+  technology:72, productivity:1.0, structuralCapital:.20, energySecurity:.73, emissions:100,
   corruption:.23, businessConfidence:.64, consumerConfidence:.62,
   exports:115, imports:105,
   fci:50, macroRisk:10, regime:'Balanced Expansion', nationalScore:62,
@@ -51,6 +51,7 @@ export class EconomyEngine {
     // Migrate saved games created before the policy-review queue existed.
     this.state.pendingPolicies ??= this.state.pendingPolicy ? [this.state.pendingPolicy] : [];
     this.state.fiscalDemand ??= 0;
+    this.state.structuralCapital ??= .20;
     this.state.consumption ??= this.state.realGDP*.61;
     this.state.investment ??= this.state.realGDP*.21;
     this.state.governmentSpending ??= this.state.realGDP*.19;
@@ -109,6 +110,16 @@ export class EconomyEngine {
     if (id === 'rate_up') this.state.policyRate = clamp(this.state.policyRate + .005, -.01, .25);
     if (id === 'rate_down') this.state.policyRate = clamp(this.state.policyRate - .005, -.01, .25);
     if (id === 'support_fx') this.state.fxReserves = clamp(this.state.fxReserves-4, 0, 80);
+    // Structural reforms add to a durable capacity stock rather than vanishing with the temporary policy impulse.
+    const reformGain:Record<string,number> = {
+      business_reform:.075, education_up:.055, research_grant:.060, anti_corruption:.045,
+      infra_up:.065, port_upgrade:.055, fdi_incentives:.040, public_transport:.025, health_up:.025
+    };
+    const gain = reformGain[id] ?? 0;
+    if (gain > 0) {
+      this.state.structuralCapital = clamp((this.state.structuralCapital ?? .20) + gain, 0, 1);
+      this.pushNews(`Long-run reform stock increased: productive-capacity index is now ${(this.state.structuralCapital*100).toFixed(1)}. Benefits arrive gradually, not instantly.`, 'good');
+    }
     const matched=this.state.activeEvents.find(e=>e.status==='active'&&e.responsePolicyIds.includes(id));
     if(matched){matched.status='responded';matched.resolvedBy=policy.label;this.state.politicalCapital=clamp(this.state.politicalCapital+3,0,100);this.pushNews(`Policy response matched the ${matched.title} event.`, 'good');}
     const pendingEvaluation = { id:policy.id, label:policy.label, tab:policy.tab, enactedTurn:this.state.turn, before:{growth:this.state.growth,inflation:this.state.inflation,unemployment:this.state.unemployment,debt:this.state.debtRatio,creditGrowth:this.state.creditGrowth,investment:this.state.investment,consumption:this.state.consumption} };
@@ -169,9 +180,12 @@ export class EconomyEngine {
     s.inflationExpected = clamp(expectationMemory*s.inflationExpected + (1-expectationMemory)*s.inflation + .08*s.credibility*(anchor-s.inflationExpected), -.03,.25);
     s.realRate = s.policyRate - s.inflationExpected;
 
+    // Reform capital depreciates very slowly, so policy benefits persist but are not permanent.
+    s.structuralCapital = clamp((s.structuralCapital ?? .20) * .9995, 0, 1);
     s.technology = clamp(s.technology + (imp.tech??0) + .12 + noise()*.07, 35, 130);
     s.productivity = clamp(s.productivity * (1 + .0011 + (s.technology-70)*.000012), .7, 1.8);
-    const potentialQ = .0045 + (s.productivity-1)*.0015 + Math.max(0,s.technology-70)*.000025;
+    // The durable reform stock raises the trend in potential output; it is not a guaranteed GDP forecast.
+    const potentialQ = .0045 + (s.productivity-1)*.0015 + Math.max(0,s.technology-70)*.000025 + .00075*Math.max(0,s.structuralCapital-.20);
     s.potentialGDP *= (1 + potentialQ);
 
     s.creditGrowth = clamp(.032 - .52*(s.policyRate-.04) + .075*(s.bankHealth-.7) + tx.credit + noise()*.004, -.12,.20);
@@ -191,7 +205,7 @@ export class EconomyEngine {
     const investmentGrowth = clamp(
       .004 + .075*(s.businessConfidence-.62) + .11*(s.creditGrowth-.03) - .045*Math.max(0,s.realRate-.012)
       + .018*(s.capacityUtilization-.78) + .012*(s.firmSales-94)
-      + .025*(s.productivity-1) + noise()*.002, -.06, .075
+      + .025*(s.productivity-1) + .012*Math.max(0,s.structuralCapital-.20) + noise()*.002, -.06, .075
     );
     const governmentGrowth = clamp(.001 + tx.government + noise()*.001, -.025, .035);
     const netExportsGrowth = clamp(.42*(s.growth-.02) - .03*(s.exchangeRate-1) + noise()*.001, -.04, .04);
