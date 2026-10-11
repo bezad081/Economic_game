@@ -185,4 +185,30 @@ describe('economic model invariants', () => {
     expect(energyStimulusInflationEffect).toBeGreaterThan(recessionStimulusInflationEffect);
   });
 
+  it('delivers a larger real-output response to fiscal stimulus in a deep recession than under an energy bottleneck', () => {
+    const recessionBaseline = new EconomyEngine('sandbox');
+    const recessionStimulus = new EconomyEngine('sandbox');
+    const energyBaseline = new EconomyEngine('sandbox');
+    const energyStimulus = new EconomyEngine('sandbox');
+
+    applyCrisisScenario(recessionBaseline.state, 'recession');
+    applyCrisisScenario(recessionStimulus.state, 'recession');
+    applyCrisisScenario(energyBaseline.state, 'energy');
+    applyCrisisScenario(energyStimulus.state, 'energy');
+
+    expect(recessionStimulus.enact('stimulus').ok).toBe(true);
+    expect(energyStimulus.enact('stimulus').ok).toBe(true);
+
+    for (let quarter = 0; quarter < 4; quarter += 1) {
+      recessionBaseline.stepQuarter();
+      recessionStimulus.stepQuarter();
+      energyBaseline.stepQuarter();
+      energyStimulus.stepQuarter();
+    }
+
+    const recessionOutputEffect = recessionStimulus.state.realGDP - recessionBaseline.state.realGDP;
+    const energyOutputEffect = energyStimulus.state.realGDP - energyBaseline.state.realGDP;
+    expect(recessionOutputEffect).toBeGreaterThan(energyOutputEffect);
+  });
+
 });
