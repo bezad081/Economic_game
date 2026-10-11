@@ -211,10 +211,11 @@ export class EconomyEngine {
     const supplyConstraint = Math.max(0, .70-s.energySecurity);
     const capacityPressure = Math.max(0, s.capacityUtilization-.78);
     s.coreInflation = clamp(.70*s.coreInflation + .18*s.inflationExpected + .12*.025
-      + .034*newGap*(1+1.25*supplyConstraint)
+      + .034*newGap
       + .010*Math.max(0,s.wageGrowth-.04)
       + .010*capacityPressure
-      + .10*Math.max(0,tx.demandGrowth)
+      // A given demand impulse adds more price pressure when supply is constrained.
+      + .18*Math.max(0,tx.demandGrowth)*(1+2*supplyConstraint)
       + (imp.inflation??0)*.72 + noise()*.0011,-.03,.25);
     s.inflation = clamp(.76*s.coreInflation + .24*(s.coreInflation+importedInflation) + (imp.inflation??0)*.28 + noise()*.0009,-.035,.30);
     s.unemployment = clamp(s.unemployment - .24*qGrowth + .08*(.052-s.unemployment) + (imp.unemployment??0) + noise()*.0012, .018,.28);
