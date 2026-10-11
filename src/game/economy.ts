@@ -260,8 +260,15 @@ export class EconomyEngine {
     s.lastQuarterSummary = `${periodLabel(s.year,s.quarter)} • GDP growth ${s.growth>=0?'+':''}${(s.growth*100).toFixed(1)}% (real GDP ${s.realGDP-before.gdp>=0?'+':''}${(s.realGDP-before.gdp).toFixed(1)}) • inflation ${(s.inflation*100).toFixed(2)}% (${(s.inflation-before.inflation)*100>=0?'+':''}${((s.inflation-before.inflation)*100).toFixed(2)} pp) • unemployment ${(s.unemployment*100).toFixed(2)}% (${(s.unemployment-before.u)*100>=0?'+':''}${((s.unemployment-before.u)*100).toFixed(2)} pp) • debt ${(s.debtRatio*100).toFixed(1)}%.`;
     if(s.pendingPolicy){
       const p=policyById(s.pendingPolicy.id);
-      if(p){ s.lastLearningReview=assessPolicy(p,s.pendingPolicy.enactedTurn,s.pendingPolicy.before,s); }
-      s.pendingPolicy=null;
+      const elapsed=s.turn-s.pendingPolicy.enactedTurn;
+      // Wait for the policy family's indicative transmission lag before judging the outcome.
+      // This avoids grading structural or trade policies on effects that have not had time to arrive.
+      if(p && elapsed>=policyLag(p.tab)){
+        s.lastLearningReview=assessPolicy(p,s.pendingPolicy.enactedTurn,s.pendingPolicy.before,s);
+        s.pendingPolicy=null;
+      } else if(!p) {
+        s.pendingPolicy=null;
+      }
     }
     s.lastLearningNote=this.learningNote(before);
     this.pushNews(`Quarter closed: ΔGDP ${(s.realGDP-before.gdp).toFixed(1)}, inflation ${((s.inflation-before.inflation)*100).toFixed(1)}pp, unemployment ${((s.unemployment-before.u)*100).toFixed(1)}pp.`, s.growth>=0?'good':'bad');
