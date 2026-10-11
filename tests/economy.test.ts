@@ -3,6 +3,7 @@ import { EconomyEngine } from '../src/game/economy';
 import { applyCrisisScenario, CRISIS_SCENARIOS } from '../src/game/scenarios';
 import { transmitDemand, policyLag } from '../src/game/transmission';
 import { POLICIES } from '../src/game/policies';
+import { assessPolicy } from '../src/game/learning';
 
 describe('economic model invariants', () => {
   it('initializes every crisis with a coherent baseline and opening event', () => {
@@ -46,6 +47,28 @@ describe('economic model invariants', () => {
     expect(result.demandGrowth).toBeGreaterThan(0);
     expect(result.outputGrowth).toBeGreaterThan(0);
     expect(result.explanation.join(' ')).toContain('Fiscal impulse');
+  });
+
+  it('does not praise a policy just because legacy headline effects look favorable when actual channels move the wrong way', () => {
+    const engine = new EconomyEngine('sandbox');
+    const before = {
+      growth: 0.02, inflation: 0.03, unemployment: 0.05, debt: 0.5,
+      creditGrowth: 0.03, investment: 200, consumption: 600,
+    };
+    const after = {
+      ...engine.snapshot(),
+      turn: 2,
+      growth: 0.01,
+      inflation: 0.025,
+      unemployment: 0.052,
+      debtRatio: 0.5,
+      creditGrowth: 0.05,
+      investment: 210,
+      consumption: 615,
+    };
+    const review = assessPolicy(POLICIES.find(p => p.id === 'rate_up')!, 0, before, after);
+    expect(review.outcome).toBe('unfavorable');
+    expect(review.result).toContain('transmission channels');
   });
 
   it('allows a valid policy to be enacted and advances the model without non-finite core values', () => {
