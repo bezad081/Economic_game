@@ -13,10 +13,12 @@ export const CRISIS_SCENARIOS: CrisisScenario[] = [
   { id: 'recession', title: 'Deep recession', subtitle: 'Demand collapse · mass unemployment', description: 'Restore demand and jobs while keeping debt and inflation manageable.', stats: { inflation: '2.5%', unemployment: '13.0%', growth: '-3.5%' } },
   { id: 'banking', title: 'Banking panic', subtitle: 'Credit frozen · confidence falling', description: 'Stabilize banks and restart credit without creating reckless moral hazard.', stats: { inflation: '4.5%', unemployment: '9.0%', growth: '-2.0%' } },
   { id: 'debt', title: 'Sovereign debt crisis', subtitle: 'High debt · expensive financing', description: 'Restore fiscal credibility without triggering a destructive contraction.', stats: { inflation: '5.5%', unemployment: '9.0%', growth: '0.5%' } },
+  { id: 'energy', title: 'Energy supply shock', subtitle: 'Costs surge · capacity constrained', description: 'Protect production and households without turning a supply shock into persistent inflation.', stats: { inflation: '9.5%', unemployment: '7.6%', growth: '0.2%' } },
 ];
 
 export function applyCrisisScenario(s: EconomySnapshot, id: string): void {
   // Reset common scenario state so every briefing begins from a clean, reproducible baseline.
+  s.scenarioId = id;
   s.history = [];
   s.news = [];
   s.activeEvents = [];
@@ -72,6 +74,14 @@ export function applyCrisisScenario(s: EconomySnapshot, id: string): void {
     s.sovereignSpread = 0.025; s.treasury = 14; s.bankHealth = 0.34; s.creditGrowth = -0.045;
     s.consumerConfidence = 0.36; s.businessConfidence = 0.29; s.approval = 0.35; s.fci = 82; s.macroRisk = 49; s.regime = 'Financial Stress';
     s.lastLearningNote = 'Bank balance sheets are impaired and credit is contracting. Liquidity support alone may fail if banks are insolvent; watch lending, deposits and public contingent liabilities.';
+  } else if (id === 'energy') {
+    s.realGDP = 990; s.potentialGDP = 1000; s.outputGap = -0.01; s.growth = 0.002;
+    s.inflation = 0.095; s.coreInflation = 0.061; s.inflationExpected = 0.064; s.wageGrowth = 0.058;
+    s.unemployment = 0.076; s.policyRate = 0.052; s.realRate = s.policyRate - s.inflationExpected;
+    s.debtRatio = 0.59; s.primaryBalance = -0.031; s.energySecurity = 0.27; s.emissions = 108;
+    s.firmSales = 88; s.capacityUtilization = 0.84; s.businessConfidence = 0.43; s.consumerConfidence = 0.44;
+    s.approval = 0.36; s.fci = 67; s.macroRisk = 42; s.regime = 'Energy Supply Shock';
+    s.lastLearningNote = 'An energy supply disruption is pushing up costs while constraining output. Targeted relief and supply resilience can help, but broad demand stimulus may add inflation pressure.';
   } else if (id === 'debt') {
     s.realGDP = 990; s.potentialGDP = 1000; s.outputGap = -0.01; s.growth = 0.005;
     s.inflation = 0.055; s.coreInflation = 0.052; s.inflationExpected = 0.054; s.wageGrowth = 0.061; s.realWageGrowth = 0.006;
