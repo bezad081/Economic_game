@@ -69,9 +69,7 @@ export function assessPolicy(
       ? 'Demand support reached the economy through government demand and/or household disposable income.'
       : 'The fiscal impulse was not enough to overcome other drags on private demand.';
   } else if (policy.tab === 'Trade') {
-    mechanism = after.firmSales > 94
-      ? 'External demand and competitiveness supported firm sales and the real economy.'
-      : 'The external channel did not translate into stronger firm sales this period.';
+    mechanism = 'Check export and import volumes, firm sales, the exchange rate and imported inflation together; any one indicator alone is not enough to identify the trade-policy channel.';
   }
 
   const nextStep =
