@@ -62,6 +62,7 @@ export function applyCrisisScenario(s: EconomySnapshot, id: string): void {
 
   if (id === 'recession') {
     s.realGDP = 940; s.potentialGDP = 1000; s.outputGap = -0.06; s.growth = -0.035;
+    s.exports = 86; s.imports = 94; s.firmSales = 79; s.firmInvestment = 2.4; s.investment = 175; s.energySecurity = 0.68;
     s.inflation = 0.025; s.coreInflation = 0.027; s.inflationExpected = 0.028; s.wageGrowth = 0.018; s.realWageGrowth = -0.007;
     s.unemployment = 0.13; s.policyRate = 0.025; s.realRate = -0.003; s.debtRatio = 0.64; s.primaryBalance = -0.04;
     s.sovereignSpread = 0.018; s.treasury = 16; s.bankHealth = 0.66; s.creditGrowth = -0.025;
@@ -72,10 +73,12 @@ export function applyCrisisScenario(s: EconomySnapshot, id: string): void {
     s.inflation = 0.045; s.coreInflation = 0.041; s.inflationExpected = 0.043; s.wageGrowth = 0.035; s.realWageGrowth = -0.01;
     s.unemployment = 0.09; s.policyRate = 0.045; s.realRate = 0.002; s.debtRatio = 0.68; s.primaryBalance = -0.032;
     s.sovereignSpread = 0.025; s.treasury = 14; s.bankHealth = 0.34; s.creditGrowth = -0.045;
+    s.exports = 103; s.imports = 106; s.firmSales = 82; s.firmInvestment = 2.8; s.investment = 183;
     s.consumerConfidence = 0.36; s.businessConfidence = 0.29; s.approval = 0.35; s.fci = 82; s.macroRisk = 49; s.regime = 'Financial Stress';
     s.lastLearningNote = 'Bank balance sheets are impaired and credit is contracting. Liquidity support alone may fail if banks are insolvent; watch lending, deposits and public contingent liabilities.';
   } else if (id === 'energy') {
     s.realGDP = 990; s.potentialGDP = 1000; s.outputGap = -0.01; s.growth = 0.002;
+    s.exports = 110; s.imports = 108; s.firmInvestment = 3.5; s.investment = 205;
     s.inflation = 0.095; s.coreInflation = 0.061; s.inflationExpected = 0.064; s.wageGrowth = 0.058;
     s.unemployment = 0.076; s.policyRate = 0.052; s.realRate = s.policyRate - s.inflationExpected;
     s.debtRatio = 0.59; s.primaryBalance = -0.031; s.energySecurity = 0.27; s.emissions = 108;
@@ -84,6 +87,7 @@ export function applyCrisisScenario(s: EconomySnapshot, id: string): void {
     s.lastLearningNote = 'An energy supply disruption is pushing up costs while constraining output. Targeted relief and supply resilience can help, but broad demand stimulus may add inflation pressure.';
   } else if (id === 'debt') {
     s.realGDP = 990; s.potentialGDP = 1000; s.outputGap = -0.01; s.growth = 0.005;
+    s.exports = 109; s.imports = 111; s.firmSales = 91; s.firmInvestment = 3.3; s.investment = 195;
     s.inflation = 0.055; s.coreInflation = 0.052; s.inflationExpected = 0.054; s.wageGrowth = 0.061; s.realWageGrowth = 0.006;
     s.unemployment = 0.09; s.policyRate = 0.065; s.realRate = 0.011; s.debtRatio = 0.94; s.primaryBalance = -0.055;
     s.sovereignSpread = 0.047; s.treasury = 7; s.bankHealth = 0.58; s.creditGrowth = -0.01;
@@ -92,5 +96,11 @@ export function applyCrisisScenario(s: EconomySnapshot, id: string): void {
   }
 
   s.realWageGrowth = s.wageGrowth - s.inflation;
+  s.realRate = s.policyRate - s.inflationExpected;
+  s.netExports = s.exports - s.imports;
+  s.currentAccount = s.netExports / Math.max(1, s.realGDP);
+  s.consumption = s.realGDP * 0.61;
+  s.investment = s.realGDP * 0.21;
+  s.governmentSpending = s.realGDP - s.consumption - s.investment - s.netExports;
   s.activeMission = null;
 }
