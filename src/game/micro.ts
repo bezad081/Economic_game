@@ -82,6 +82,8 @@ export function updateMicroeconomy(s:EconomySnapshot, rand:()=>number, effects:E
 
   const inflationPain=Math.max(0,s.inflation-.025);
   const housingPain=Math.max(0,.68-s.housingAffordability);
+  // Targeted transfers primarily reach lower-income households, whose marginal propensity to consume is higher.
+  const targetedTransfer=effects.targetedTransfer ?? 0;
   for(const h of s.households){
     const sensitivity=h.id==='lower'?1.35:h.id==='middle'?1:.65;
     h.unemployment=clamp(s.unemployment*(h.id==='lower'?1.35:h.id==='upper' ? .55 : .9),.01,.38);
