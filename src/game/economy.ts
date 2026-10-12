@@ -287,6 +287,7 @@ export class EconomyEngine {
     if(s.quarter>4){ s.quarter=1; s.year += 1; }
 
     this.updateEvents();
+    this.propagateStress();
     this.maybeGenerateEvent();
     updateElection(s,()=>this.rng.next());
     if(s.bankruptcies>0) this.pushNews(`${s.bankruptcies} firm${s.bankruptcies===1?'':'s'} entered restructuring this quarter.`, 'bad');
@@ -405,6 +406,33 @@ export class EconomyEngine {
     const d=defs[parent.kind];
     const severity=clamp(parent.severity-1+Math.round(this.rng.range(0,1)),2,5) as MacroEvent['severity'];
     return {id:`evt-chain-${d.kind}-${s.turn}-${Math.floor(this.rng.next()*9999)}`,kind:d.kind,title:d.title,description:d.description,severity,startedTurn:s.turn,deadlineTurn:s.turn+(severity>=4?2:3),responsePolicyIds:d.response,responseLabel:d.label,learning:d.learning,status:'active',chainId,parentEventId:parent.id,stage,consequence:d.consequence};
+  }
+
+
+  /** Converts persistent macro-financial imbalances into linked, actionable events. */
+  private propagateStress(){
+    const s=this.state;
+    if(s.activeEvents.length>=3) return;
+    const candidates:{key:string;kind:MacroEvent['kind'];title:string;description:string;severity:MacroEvent['severity'];response:string[];label:string;learning:string;consequence:string;effects:Effects;when:boolean}[]=[
+      {key:'energy',kind:'energy',title:'Energy bottleneck spreads to production',description:'Weak energy security is coinciding with price pressure or falling output; supply constraints are now threatening broader activity.',severity:s.energySecurity<.38?5:4,response:['energy_subsidy','infra_up','port_upgrade'],label:'Restore reliable supply and protect essential production',learning:'A supply bottleneck can limit the output response to demand support while intensifying inflation.',consequence:'If persistent, production losses and price pressure may reinforce one another.',effects:{energy:-.025,growth:-.003,inflation:.004,confidence:-.015},when:s.energySecurity<.48&&(s.inflation>.055||s.growth<0)},
+      {key:'banking',kind:'banking',title:'Weak credit transmission threatens viable firms',description:'Bank health and credit growth have both weakened, risking a feedback loop from tighter lending to lower investment and employment.',severity:s.bankHealth<.35?5:4,response:['bank_recap','sme_credit','macroprudential'],label:'Repair lending channels and protect viable borrowers',learning:'Weak banks can reduce credit, investment and employment, further worsening loan quality.',consequence:'A prolonged credit squeeze may push otherwise viable firms into distress.',effects:{bank:-.025,credit:-.02,growth:-.003,confidence:-.018},when:s.bankHealth<.48&&s.creditGrowth<.005},
+      {key:'currency',kind:'currency',title:'Currency weakness feeds domestic inflation',description:'Exchange-rate pressure and elevated inflation suggest that imported costs may be passing into domestic prices.',severity:s.exchangeRate>1.3?5:4,response:['support_fx','rate_up','imf_bailout'],label:'Stabilize expectations while protecting reserve adequacy',learning:'Currency depreciation can increase import prices and weaken inflation credibility.',consequence:'Further depreciation may accelerate imported inflation and reduce purchasing power.',effects:{fx:.025,inflation:.004,confidence:-.018},when:s.exchangeRate>1.22&&s.inflation>.065},
+      {key:'debt',kind:'debt',title:'High debt and funding costs reinforce each other',description:'Public debt and sovereign spreads are both elevated, increasing the risk that financing costs constrain future policy choices.',severity:s.debtRatio>1.05?5:4,response:['austerity','income_tax_up','imf_bailout'],label:'Restore a credible medium-term fiscal path',learning:'High debt can raise funding costs; weak growth can then make debt ratios harder to stabilize.',consequence:'Rising interest costs may crowd out productive spending and intensify currency pressure.',effects:{debt:.01,confidence:-.02,fx:.012},when:s.debtRatio>.88&&s.sovereignSpread>.045},
+      {key:'housing',kind:'housing',title:'Housing stress threatens bank balance sheets',description:'Falling housing affordability and weak bank health suggest that property-market losses may be spilling into lending conditions.',severity:s.bankHealth<.42?5:4,response:['macroprudential','housing_support','bank_recap'],label:'Contain property risk and protect financial stability',learning:'Housing losses can reduce collateral values, weaken banks and restrict credit.',consequence:'Mortgage losses may intensify credit tightening and weaken construction.',effects:{bank:-.018,credit:-.012,confidence:-.015},when:s.housingIndex>138&&s.bankHealth<.58},
+      {key:'wages',kind:'wages',title:'Wage-price persistence is building',description:'Strong wage growth alongside high inflation risks making a temporary cost shock more persistent.',severity:s.wageGrowth>.085?5:4,response:['rate_up','education_up','business_reform'],label:'Anchor expectations without unnecessarily crushing employment',learning:'Wage and price expectations can reinforce each other after a supply shock.',consequence:'Persistent wage-price pressure may erode real incomes and weaken policy credibility.',effects:{inflation:.004,confidence:-.01},when:s.wageGrowth>.075&&s.inflation>.07}
+    ];
+    for(const e of candidates){
+      const cooldownKey=`spillover-${e.key}`;
+      if(!e.when||(s.cooldowns[cooldownKey]??0)>0) continue;
+      if(s.activeEvents.some(a=>a.status==='active'&&a.kind===e.kind)) continue;
+      const id=`spillover-${e.key}-${s.turn}`;
+      const event:MacroEvent={id,kind:e.kind,title:e.title,description:e.description,severity:e.severity,startedTurn:s.turn,deadlineTurn:s.turn+2,responsePolicyIds:e.response,responseLabel:e.label,learning:e.learning,status:'active',chainId:id,stage:1,consequence:e.consequence};
+      s.activeEvents.push(event);
+      s.impulses.push({id:`event-${id}`,label:e.title,age:0,duration:4,effects:e.effects});
+      s.cooldowns[cooldownKey]=4;
+      this.pushNews(`Spillover alert: ${e.title}. Multiple indicators point to a connected risk; review the response before the deadline.`,'bad');
+      break;
+    }
   }
 
   private maybeGenerateEvent(){
