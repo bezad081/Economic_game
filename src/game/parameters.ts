@@ -118,3 +118,59 @@ export function updateCreditGrowth(
     + noise
   ));
 }
+
+
+/**
+ * Adaptive inflation expectations with credibility-sensitive anchoring.
+ * Rates are decimal annualized values; coefficients are stylized teaching assumptions.
+ */
+export function updateInflationExpectations(
+  previousExpectation: number,
+  currentInflation: number,
+  credibility: number,
+  anchor = MACRO.anchorInflation,
+): number {
+  const confidence = Math.max(0, Math.min(1, credibility));
+  const memory = 0.62 + 0.22 * (1 - confidence);
+  const updated = memory * previousExpectation
+    + (1 - memory) * currentInflation
+    + 0.08 * confidence * (anchor - previousExpectation);
+  return Math.max(-0.03, Math.min(0.25, updated));
+}
+
+/**
+ * Wage adjustment combines expectation persistence, productivity, and labor-market slack.
+ * All rates are decimal; this is a stylized wage-setting rule, not an estimated Phillips curve.
+ */
+export function updateWageGrowth(
+  previousWageGrowth: number,
+  expectedInflation: number,
+  productivity: number,
+  unemployment: number,
+  shock = 0,
+): number {
+  const wageGrowth = 0.58 * previousWageGrowth
+    + 0.25 * expectedInflation
+    + 0.17 * (0.025 + productivity * 0.004)
+    + 0.16 * Math.max(0, 0.055 - unemployment)
+    + shock;
+  return Math.max(-0.03, Math.min(0.20, wageGrowth));
+}
+
+/**
+ * Sovereign spread rises with debt, a weak primary balance, low credibility and fragile banks.
+ * Returns an annualized decimal spread; coefficients are stylized, not market-calibrated.
+ */
+export function updateSovereignSpread(
+  debtRatio: number,
+  primaryBalance: number,
+  credibility: number,
+  bankHealth: number,
+): number {
+  const spread = 0.004
+    + 0.035 * Math.max(0, debtRatio - 0.65)
+    + 0.025 * Math.max(0, -primaryBalance - 0.03)
+    + 0.020 * (1 - Math.max(0, Math.min(1, credibility)))
+    + 0.016 * Math.max(0, 0.65 - Math.max(0, Math.min(1, bankHealth)));
+  return Math.max(0.002, Math.min(0.16, spread));
+}
