@@ -424,3 +424,39 @@ describe('crisis event chains', () => {
     expect(engine.state.news.some(n => n.text.includes('Event chain advanced'))).toBe(true);
   });
 });
+
+
+describe('crisis response effectiveness', () => {
+  it('stops the recurring spillover impulse after an appropriate response', () => {
+    const engine = new EconomyEngine('sandbox');
+    engine.state.energySecurity = 0.30;
+    engine.state.inflation = 0.11;
+    engine.state.growth = -0.02;
+    engine.stepQuarter();
+
+    const event = engine.state.activeEvents.find(e => e.title === 'Energy bottleneck spreads to production');
+    expect(event).toBeDefined();
+    expect(engine.state.impulses.some(i => i.id === `event-${event?.id}`)).toBe(true);
+
+    const result = engine.enact('energy_subsidy');
+    expect(result.ok).toBe(true);
+    expect(event?.status).toBe('responded');
+    expect(event?.resolvedBy).toBe('Energy Relief');
+    expect(engine.state.impulses.some(i => i.id === `event-${event?.id}`)).toBe(false);
+    expect(engine.state.news.some(n => n.text.includes('Ongoing spillover pressure has been stopped'))).toBe(true);
+  });
+
+  it('does not remove unrelated policy or shock impulses when resolving one event', () => {
+    const engine = new EconomyEngine('sandbox');
+    engine.state.energySecurity = 0.30;
+    engine.state.inflation = 0.11;
+    engine.state.growth = -0.02;
+    engine.stepQuarter();
+    engine.triggerShock('financial');
+    const unrelated = engine.state.impulses.find(i => i.id.startsWith('shock-financial-'));
+    expect(unrelated).toBeDefined();
+
+    expect(engine.enact('energy_subsidy').ok).toBe(true);
+    expect(engine.state.impulses.some(i => i.id === unrelated?.id)).toBe(true);
+  });
+});
