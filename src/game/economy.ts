@@ -2,7 +2,7 @@ import { POLICIES, policyById } from './policies';
 import type { ActiveImpulse, AdvisorRecommendation, EconomySnapshot, Effects, GameMode, HistoryPoint, MacroEvent, Mission, NewsItem, PolicySpec } from './types';
 import { cabinetAdvice, seedFirms, seedHouseholds, updateElection, updateMicroeconomy } from './micro';
 import { policyLag, transmitDemand } from './transmission';
-import { updateDebtRatio } from './parameters';
+import { updateDebtRatio, updateUnemployment } from './parameters';
 import { assessPolicy } from './learning';
 
 const clamp = (x:number, lo:number, hi:number) => Math.max(lo, Math.min(hi, x));
@@ -262,7 +262,11 @@ export class EconomyEngine {
       + .18*Math.max(0,tx.demandGrowth)*(1+2*supplyConstraint)
       + (imp.inflation??0)*.72 + noise()*.0011,-.03,.25);
     s.inflation = clamp(.76*s.coreInflation + .24*(s.coreInflation+importedInflation) + (imp.inflation??0)*.28 + noise()*.0009,-.035,.30);
-    s.unemployment = clamp(s.unemployment - .24*qGrowth + .08*(.052-s.unemployment) + (imp.unemployment??0) + noise()*.0012, .018,.28);
+    // Okun-style channel: employment improves when actual growth outpaces potential,
+    // rather than whenever GDP growth is merely positive.
+    s.unemployment = updateUnemployment(
+      s.unemployment, qGrowth, potentialQ, (imp.unemployment ?? 0) + noise()*.0012
+    );
     s.wageGrowth=clamp(.58*s.wageGrowth+.25*s.inflationExpected+.17*(.025+s.productivity*.004)+.16*Math.max(0,.055-s.unemployment)+noise()*.0015,-.03,.20);
     s.realWageGrowth=clamp(s.wageGrowth-s.inflation,-.15,.15);
 
