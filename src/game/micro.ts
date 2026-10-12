@@ -49,7 +49,9 @@ export function updateMicroeconomy(s:EconomySnapshot, rand:()=>number, effects:E
 
   for(const f of s.firms){
     const demand=sectorBoost[f.sector]+.012*(s.businessConfidence-.6)+.006*gap;
-    const financingDrag=.08*Math.max(0,realFunding-.01)*f.leverage;
+    const financingDrag=.08*Math.max(0,realFunding-.01)*f.leverage
+      + .12*Math.max(0,s.sovereignSpread-.015)*f.leverage
+      + .035*Math.max(0,.03-s.creditGrowth);
     const productivityGrowth=.002+.00035*(s.technology-70)+.002*(f.sector==='Technology'?1:0);
     f.productivity=clamp(f.productivity*(1+productivityGrowth),.6,2.2);
     const revenue=Math.max(.2,(f.employees/28)*f.productivity*(1+demand+rand()*.025));
