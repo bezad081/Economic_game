@@ -2,7 +2,7 @@ import { POLICIES, policyById } from './policies';
 import type { ActiveImpulse, AdvisorRecommendation, EconomySnapshot, Effects, GameMode, HistoryPoint, MacroEvent, Mission, NewsItem, PolicySpec } from './types';
 import { cabinetAdvice, seedFirms, seedHouseholds, updateElection, updateMicroeconomy } from './micro';
 import { policyLag, transmitDemand } from './transmission';
-import { updateCreditGrowth, updateDebtRatio, updateUnemployment } from './parameters';
+import { updateCreditGrowth, updateDebtRatio, updateInflationExpectations, updateSovereignSpread, updateUnemployment, updateWageGrowth } from './parameters';
 import { assessPolicy } from './learning';
 
 const clamp = (x:number, lo:number, hi:number) => Math.max(lo, Math.min(hi, x));
@@ -187,8 +187,7 @@ export class EconomyEngine {
 
     const anchor=.025;
     s.credibility=clamp(s.credibility + .035*(1-Math.abs(s.inflation-anchor)/.08) - .025*Math.max(0,s.inflationExpected-.05) + noise()*.003,.15,.98);
-    const expectationMemory=.62+.22*(1-s.credibility);
-    s.inflationExpected = clamp(expectationMemory*s.inflationExpected + (1-expectationMemory)*s.inflation + .08*s.credibility*(anchor-s.inflationExpected), -.03,.25);
+    s.inflationExpected = updateInflationExpectations(s.inflationExpected, s.inflation, s.credibility, anchor);
     s.realRate = s.policyRate - s.inflationExpected;
 
     // Reform capital depreciates very slowly, so policy benefits persist but are not permanent.
@@ -267,7 +266,7 @@ export class EconomyEngine {
     s.unemployment = updateUnemployment(
       s.unemployment, qGrowth, potentialQ, (imp.unemployment ?? 0) + noise()*.0012
     );
-    s.wageGrowth=clamp(.58*s.wageGrowth+.25*s.inflationExpected+.17*(.025+s.productivity*.004)+.16*Math.max(0,.055-s.unemployment)+noise()*.0015,-.03,.20);
+    s.wageGrowth=updateWageGrowth(s.wageGrowth, s.inflationExpected, s.productivity, s.unemployment, noise()*.0015);
     s.realWageGrowth=clamp(s.wageGrowth-s.inflation,-.15,.15);
 
     s.bankHealth = clamp(s.bankHealth + .030*qGrowth - .12*Math.max(0,s.unemployment-.08) - .055*Math.max(0,s.policyRate-.10) + (imp.bank??0) + noise()*.006, .08,1);
@@ -277,7 +276,7 @@ export class EconomyEngine {
     // would change spending without paying for it in the debt dynamics.
     s.primaryBalance = clamp(-.018 + .10*(s.debtRatio-.60) - .06*(s.growth-.02) - .18*(imp.fiscalDemand??0), -.12,.10);
     s.treasury += (imp.treasury??0) - s.primaryBalance*10 + noise()*.4;
-    s.sovereignSpread=clamp(.004+.035*Math.max(0,s.debtRatio-.65)+.025*Math.max(0,-s.primaryBalance-.03)+.020*(1-s.credibility)+.016*Math.max(0,.65-s.bankHealth),.002,.16);
+    s.sovereignSpread=updateSovereignSpread(s.debtRatio, s.primaryBalance, s.credibility, s.bankHealth);
     // Debt sustainability depends on financing costs relative to nominal GDP growth,
     // not real growth alone. Inflation is annualized; qGrowth is quarterly.
     s.debtRatio = updateDebtRatio(
