@@ -2,6 +2,7 @@ import { POLICIES, policyById } from './policies';
 import type { ActiveImpulse, AdvisorRecommendation, EconomySnapshot, Effects, GameMode, HistoryPoint, MacroEvent, Mission, NewsItem, PolicySpec } from './types';
 import { cabinetAdvice, seedFirms, seedHouseholds, updateElection, updateMicroeconomy } from './micro';
 import { policyLag, transmitDemand } from './transmission';
+import { updateDebtRatio } from './parameters';
 import { assessPolicy } from './learning';
 
 const clamp = (x:number, lo:number, hi:number) => Math.max(lo, Math.min(hi, x));
@@ -273,8 +274,12 @@ export class EconomyEngine {
     s.primaryBalance = clamp(-.018 + .10*(s.debtRatio-.60) - .06*(s.growth-.02) - .18*(imp.fiscalDemand??0), -.12,.10);
     s.treasury += (imp.treasury??0) - s.primaryBalance*10 + noise()*.4;
     s.sovereignSpread=clamp(.004+.035*Math.max(0,s.debtRatio-.65)+.025*Math.max(0,-s.primaryBalance-.03)+.020*(1-s.credibility)+.016*Math.max(0,.65-s.bankHealth),.002,.16);
-    const rq=Math.max(-.01,s.policyRate+s.sovereignSpread)/4;
-    s.debtRatio = clamp(((1+rq)/(1+qGrowth))*s.debtRatio - s.primaryBalance/4 + (imp.debt??0), .08,2.4);
+    // Debt sustainability depends on financing costs relative to nominal GDP growth,
+    // not real growth alone. Inflation is annualized; qGrowth is quarterly.
+    s.debtRatio = updateDebtRatio(
+      s.debtRatio, s.policyRate, s.sovereignSpread, qGrowth,
+      s.inflation, s.primaryBalance, imp.debt ?? 0
+    );
 
     const housingDemand=.010 + .05*(s.creditGrowth-.03) - .035*(s.policyRate-.04) + .02*(s.growth-.02);
     s.housingIndex = clamp(s.housingIndex*(1 + housingDemand - (imp.housingSupply??0)*.6 + noise()*.003), 45,340);
