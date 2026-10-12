@@ -97,3 +97,21 @@ describe('firm aggregate indicators and labor transmission', () => {
       firms.reduce((sum, firm) => sum + firm.health, 0) / firms.length;
     expect(meanHealth(stressed.firms)).toBeLessThan(meanHealth(stable.firms));
   });
+
+
+describe('firm financing feedback', () => {
+  it('makes higher sovereign spreads reduce leveraged firm profits', () => {
+    const base = new EconomyEngine('sandbox').snapshot();
+    const stressed = structuredClone(base);
+    const stable = structuredClone(base);
+    stressed.sovereignSpread = 0.12;
+    stable.sovereignSpread = 0.005;
+    stressed.creditGrowth = -0.08;
+    stable.creditGrowth = 0.06;
+    updateMicroeconomy(stressed, () => 0.5);
+    updateMicroeconomy(stable, () => 0.5);
+    const meanProfit = (firms: typeof stable.firms) =>
+      firms.reduce((sum, firm) => sum + firm.profit, 0) / firms.length;
+    expect(meanProfit(stressed.firms)).toBeLessThan(meanProfit(stable.firms));
+  });
+});
