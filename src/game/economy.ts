@@ -203,7 +203,9 @@ export class EconomyEngine {
     s.consumerConfidence = clamp(.65*s.consumerConfidence + .35*(.72 - 1.8*Math.max(0,s.inflation-.025) - 1.2*Math.max(0,s.unemployment-.05) + .3*s.approval), .12,.95);
 
     // Micro layer: firms and households form the bridge between policy and aggregate demand.
+    const employmentBeforeMicro = s.totalEmployment || s.firms.reduce((sum, firm) => sum + firm.employees, 0);
     updateMicroeconomy(s,()=>this.rng.next(),imp);
+    const employmentGrowth = (s.totalEmployment - employmentBeforeMicro) / Math.max(1, employmentBeforeMicro);
     const outputGap=(s.realGDP/s.potentialGDP)-1;
     s.outputGap=outputGap;
     // National-account demand channels: policy affects components first; GDP responds to their combined movement.
@@ -215,6 +217,7 @@ export class EconomyEngine {
     const investmentGrowth = clamp(
       .004 + .075*(s.businessConfidence-.62) + .11*(s.creditGrowth-.03) - .045*Math.max(0,s.realRate-.012)
       + .018*(s.capacityUtilization-.78) + .012*(s.firmSales-94)
+      + .012*(s.firmInvestment-4.5)
       + .025*(s.productivity-1) + .012*Math.max(0,s.structuralCapital-.20) + noise()*.002, -.06, .075
     );
     const governmentGrowth = clamp(.001 + tx.government + noise()*.001, -.025, .035);
@@ -264,7 +267,7 @@ export class EconomyEngine {
     // Okun-style channel: employment improves when actual growth outpaces potential,
     // rather than whenever GDP growth is merely positive.
     s.unemployment = updateUnemployment(
-      s.unemployment, qGrowth, potentialQ, (imp.unemployment ?? 0) + noise()*.0012
+      s.unemployment, qGrowth, potentialQ, (imp.unemployment ?? 0) - 0.12*employmentGrowth + noise()*.0012
     );
     s.wageGrowth=updateWageGrowth(s.wageGrowth, s.inflationExpected, s.productivity, s.unemployment, noise()*.0015);
     s.realWageGrowth=clamp(s.wageGrowth-s.inflation,-.15,.15);
