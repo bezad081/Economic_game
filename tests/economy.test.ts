@@ -607,3 +607,58 @@ describe('real-rate and sovereign-risk credit channel', () => {
     expect(healthy).toBeGreaterThan(fragile);
   });
 });
+
+
+describe('expectations, wage setting and sovereign-risk feedback', () => {
+  it('anchors inflation expectations faster when credibility is stronger', async () => {
+    const { updateInflationExpectations } = await import('../src/game/parameters');
+    const credible = updateInflationExpectations(0.08, 0.03, 0.95, 0.025);
+    const fragile = updateInflationExpectations(0.08, 0.03, 0.20, 0.025);
+    expect(Math.abs(credible - 0.025)).toBeLessThan(Math.abs(fragile - 0.025));
+  });
+
+  it('lets persistent current inflation lift expectations, but keeps them bounded', async () => {
+    const { updateInflationExpectations } = await import('../src/game/parameters');
+    const calm = updateInflationExpectations(0.03, 0.025, 0.75);
+    const inflationShock = updateInflationExpectations(0.03, 0.14, 0.75);
+    expect(inflationShock).toBeGreaterThan(calm);
+    expect(updateInflationExpectations(0.24, 0.30, 0.15)).toBeLessThanOrEqual(0.25);
+  });
+
+  it('connects wage growth to inflation expectations and labor-market tightness', async () => {
+    const { updateWageGrowth } = await import('../src/game/parameters');
+    const highExpectations = updateWageGrowth(0.04, 0.08, 1.0, 0.055);
+    const anchoredExpectations = updateWageGrowth(0.04, 0.02, 1.0, 0.055);
+    const tightLabor = updateWageGrowth(0.04, 0.03, 1.0, 0.025);
+    const slackLabor = updateWageGrowth(0.04, 0.03, 1.0, 0.12);
+    expect(highExpectations).toBeGreaterThan(anchoredExpectations);
+    expect(tightLabor).toBeGreaterThan(slackLabor);
+  });
+
+  it('prices sovereign risk higher when debt, credibility or bank conditions deteriorate', async () => {
+    const { updateSovereignSpread } = await import('../src/game/parameters');
+    const stable = updateSovereignSpread(0.50, 0.00, 0.90, 0.90);
+    expect(updateSovereignSpread(0.95, -0.08, 0.90, 0.90)).toBeGreaterThan(stable);
+    expect(updateSovereignSpread(0.50, 0.00, 0.20, 0.90)).toBeGreaterThan(stable);
+    expect(updateSovereignSpread(0.50, 0.00, 0.90, 0.20)).toBeGreaterThan(stable);
+    expect(updateSovereignSpread(2.0, -1.0, 0.0, 0.0)).toBeLessThanOrEqual(0.16);
+  });
+
+  it('keeps the integrated engine finite while expectation and sovereign-risk feedback interact', () => {
+    const engine = new EconomyEngine('mission');
+    engine.state.inflation = 0.12;
+    engine.state.inflationExpected = 0.09;
+    engine.state.credibility = 0.25;
+    engine.state.debtRatio = 0.92;
+    engine.state.bankHealth = 0.30;
+    for (let i = 0; i < 16; i += 1) engine.stepQuarter();
+    for (const value of [
+      engine.state.inflationExpected,
+      engine.state.wageGrowth,
+      engine.state.realWageGrowth,
+      engine.state.sovereignSpread,
+      engine.state.creditGrowth,
+      engine.state.debtRatio,
+    ]) expect(Number.isFinite(value)).toBe(true);
+  });
+});
