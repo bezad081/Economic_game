@@ -1,4 +1,4 @@
-import type { CabinetAdvice, EconomySnapshot, FirmSector, FirmState, HouseholdCohort } from './types';
+import type { CabinetAdvice, EconomySnapshot, Effects, FirmSector, FirmState, HouseholdCohort } from './types';
 
 const clamp=(x:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,x));
 const sectors:FirmSector[]=['Industry','Services','Technology','Construction','Export','Energy'];
