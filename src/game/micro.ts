@@ -104,8 +104,10 @@ export function updateMicroeconomy(s:EconomySnapshot, rand:()=>number, effects:E
   const capacityUtilization=clamp(.72+.75*gap+.18*(s.businessConfidence-.6)-.08*Math.max(0,s.policyRate-.06),.45,1.08);
   s.householdIncome=householdIncome;
   s.householdSavings=householdSavings;
-  s.firmSales=firmSales;
-  s.firmInvestment=firmInvestment;
+  // Expose comparable macro-facing indices instead of raw sums whose units grow with firm count.
+  // The initial economy is calibrated around firm sales = 94 and firm investment = 4.5.
+  s.firmSales=firmSales*2.1;
+  s.firmInvestment=firmInvestment*(4.5/32.4);
   s.capacityUtilization=capacityUtilization;
   s.poverty=clamp(.65*s.poverty+.35*(.04+.62*low.unemployment+.10*inflationPain+.08*housingPain-.08*Math.max(0,targetedTransfer)),.025,.46);
   s.inequality=clamp(.72*s.inequality+.28*(.28+.12*Math.log(Math.max(1,s.households[2].wealth/middle.wealth))+.06*housingPain),.22,.65);
