@@ -45,3 +45,29 @@ export const TRANSMISSION = {
     Emergency: 1,
   },
 } as const;
+
+
+/**
+ * Quarterly debt-ratio update for an annualized macro model.
+ * Inflation and interest are annual rates; real GDP growth is quarterly.
+ * The primary balance is an annual GDP share, so only one quarter is applied.
+ * Parameters are teaching-model assumptions, not an empirical forecast equation.
+ */
+export function updateDebtRatio(
+  debtRatio: number,
+  annualPolicyRate: number,
+  annualSovereignSpread: number,
+  quarterlyRealGrowth: number,
+  annualInflation: number,
+  annualPrimaryBalance: number,
+  debtImpulse = 0,
+): number {
+  const quarterlyNominalGDPGrowth = (1 + quarterlyRealGrowth) * (1 + annualInflation / 4) - 1;
+  const quarterlyEffectiveInterest = Math.max(-0.01, annualPolicyRate + annualSovereignSpread) / 4;
+  const denominator = Math.max(0.5, 1 + quarterlyNominalGDPGrowth);
+  return Math.max(0.08, Math.min(2.4,
+    ((1 + quarterlyEffectiveInterest) / denominator) * debtRatio
+    - annualPrimaryBalance / 4
+    + debtImpulse
+  ));
+}
