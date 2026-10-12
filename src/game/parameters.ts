@@ -87,6 +87,6 @@ export function updateUnemployment(
 ): number {
   const cyclicalGrowthGap = quarterlyRealGrowth - quarterlyPotentialGrowth;
   return Math.max(0.018, Math.min(0.28,
-    unemployment - 0.24 * cyclicalGrowthGap + 0.08 * (0.052 - unemployment) + shock
+    unemployment - 0.24 * cyclicalGrowthGap + 0.04 * (0.052 - unemployment) + shock
   ));
 }
