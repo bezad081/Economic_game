@@ -81,3 +81,19 @@ describe('firm aggregate indicators and labor transmission', () => {
     expect(supported.firmInvestment).toBeGreaterThan(constrained.firmInvestment);
   });
 });
+
+
+  it('makes sovereign funding stress weaken leveraged firms more than stable funding does', () => {
+    const base = new EconomyEngine('sandbox').snapshot();
+    const stressed = structuredClone(base);
+    const stable = structuredClone(base);
+    stressed.sovereignSpread = 0.10;
+    stable.sovereignSpread = 0.005;
+    stressed.creditGrowth = -0.06;
+    stable.creditGrowth = 0.05;
+    updateMicroeconomy(stressed, () => 0.5);
+    updateMicroeconomy(stable, () => 0.5);
+    const meanHealth = (firms: typeof stable.firms) =>
+      firms.reduce((sum, firm) => sum + firm.health, 0) / firms.length;
+    expect(meanHealth(stressed.firms)).toBeLessThan(meanHealth(stable.firms));
+  });
