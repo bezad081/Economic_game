@@ -276,7 +276,9 @@ export class EconomyEngine {
     // would change spending without paying for it in the debt dynamics.
     s.primaryBalance = clamp(-.018 + .10*(s.debtRatio-.60) - .06*(s.growth-.02) - .18*(imp.fiscalDemand??0) + (imp.fiscalRevenue??0), -.12,.10);
     // Treasury cash rises with a primary surplus and falls with a primary deficit.
-    s.treasury = clamp(s.treasury + (imp.treasury??0) + s.primaryBalance*10 + noise()*.4, 0, 100);
+    // Keep stochastic treasury noise smaller than ordinary fiscal flows, so the cash balance
+    // responds directionally to sustained deficits/surpluses instead of random quarter noise.
+    s.treasury = clamp(s.treasury + (imp.treasury??0) + s.primaryBalance*10 + noise()*.08, 0, 100);
     s.sovereignSpread=updateSovereignSpread(s.debtRatio, s.primaryBalance, s.credibility, s.bankHealth);
     // Debt sustainability depends on financing costs relative to nominal GDP growth,
     // not real growth alone. Inflation is annualized; qGrowth is quarterly.
