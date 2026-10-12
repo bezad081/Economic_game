@@ -559,3 +559,27 @@ describe('nominal-growth debt dynamics', () => {
     expect(ratio).toBeLessThanOrEqual(2.4);
   });
 });
+
+
+describe('Okun-style labor-market dynamics', () => {
+  it('reduces unemployment when growth exceeds potential growth', async () => {
+    const { updateUnemployment } = await import('../src/game/parameters');
+    const abovePotential = updateUnemployment(0.08, 0.025, 0.005);
+    const belowPotential = updateUnemployment(0.08, -0.005, 0.005);
+    expect(abovePotential).toBeLessThan(belowPotential);
+    expect(abovePotential).toBeLessThan(0.08);
+    expect(belowPotential).toBeGreaterThan(0.08);
+  });
+
+  it('does not automatically treat positive growth below potential as a labor-market boom', async () => {
+    const { updateUnemployment } = await import('../src/game/parameters');
+    const unemployment = updateUnemployment(0.07, 0.004, 0.009);
+    expect(unemployment).toBeGreaterThan(0.07);
+  });
+
+  it('keeps unemployment bounded under large shocks', async () => {
+    const { updateUnemployment } = await import('../src/game/parameters');
+    expect(updateUnemployment(0.27, -0.08, 0.01, 0.10)).toBeLessThanOrEqual(0.28);
+    expect(updateUnemployment(0.02, 0.08, 0, -0.10)).toBeGreaterThanOrEqual(0.018);
+  });
+});
