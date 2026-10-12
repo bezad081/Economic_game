@@ -49,7 +49,7 @@ export interface CabinetAdvice {
 export type EffectKey =
   | 'growth' | 'inflation' | 'unemployment' | 'debt' | 'approval' | 'bank'
   | 'fx' | 'credit' | 'tech' | 'energy' | 'emissions' | 'housingSupply'
-  | 'poverty' | 'inequality' | 'corruption' | 'treasury' | 'confidence' | 'fiscalDemand' | 'fiscalRevenue' | 'householdDemand';
+  | 'poverty' | 'inequality' | 'corruption' | 'treasury' | 'confidence' | 'fiscalDemand' | 'fiscalRevenue' | 'householdDemand' | 'targetedTransfer';
 
 export type Effects = Partial<Record<EffectKey, number>>;
 
