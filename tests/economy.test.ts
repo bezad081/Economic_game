@@ -300,6 +300,32 @@ describe('economic model invariants', () => {
 });
 
 
+describe('endogenous crisis spillovers', () => {
+  it('creates an actionable supply event when weak energy security meets high inflation', () => {
+    const engine = new EconomyEngine('sandbox');
+    engine.state.energySecurity = 0.30;
+    engine.state.inflation = 0.11;
+    engine.state.growth = -0.02;
+    engine.stepQuarter();
+
+    const event = engine.state.activeEvents.find(e => e.title === 'Energy bottleneck spreads to production');
+    expect(event).toBeDefined();
+    expect(event?.severity).toBeGreaterThanOrEqual(4);
+    expect(event?.deadlineTurn).toBeGreaterThan(engine.state.turn);
+    expect(event?.responsePolicyIds).toContain('energy_subsidy');
+    expect(engine.state.news.some(n => n.text.includes('Spillover alert'))).toBe(true);
+  });
+
+  it('turns simultaneous bank weakness and weak credit into a financial feedback risk', () => {
+    const engine = new EconomyEngine('sandbox');
+    engine.state.bankHealth = 0.35;
+    engine.state.creditGrowth = -0.01;
+    engine.stepQuarter();
+
+    expect(engine.state.activeEvents.some(e => e.title === 'Weak credit transmission threatens viable firms')).toBe(true);
+  });
+});
+
 describe('strategic advisor', () => {
   it('prioritizes supply resilience rather than broad demand stimulus during an energy constraint', () => {
     const econ = new EconomyEngine('sandbox').snapshot();
