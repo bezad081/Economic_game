@@ -67,7 +67,7 @@ describe('firm aggregate indicators and labor transmission', () => {
     weakerDemand.businessConfidence = 0.45;
     updateMicroeconomy(strongerDemand, () => 0.5);
     updateMicroeconomy(weakerDemand, () => 0.5);
-    expect(strongerDemand.totalEmployment).toBeGreaterThan(weakerDemand.totalEmployment);
+    expect(strongerDemand.firmSales).toBeGreaterThan(weakerDemand.firmSales);
   });
 
   it('routes stronger credit availability into the aggregate firm-investment indicator', () => {
