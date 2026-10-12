@@ -218,8 +218,18 @@ export class EconomyEngine {
       + .025*(s.productivity-1) + .012*Math.max(0,s.structuralCapital-.20) + noise()*.002, -.06, .075
     );
     const governmentGrowth = clamp(.001 + tx.government + noise()*.001, -.025, .035);
-    const netExportsGrowth = clamp(.42*(s.growth-.02) - .03*(s.exchangeRate-1) + noise()*.001, -.04, .04);
-    const demandGrowth = .61*consumptionGrowth + .21*investmentGrowth + .19*governmentGrowth + .08*netExportsGrowth;
+    // Expenditure-side demand contribution uses component levels relative to GDP.
+    // This avoids treating net exports as a positive "growth rate" when the trade balance is negative,
+    // and makes export/import exposure matter in the real-output calculation.
+    const exportGrowthSignal = clamp(.45*s.growth + .016*(1-s.exchangeRate) + .003*(s.technology-70)/10, -.04, .04);
+    const importGrowthSignal = clamp(.50*s.growth - .020*(s.exchangeRate-1), -.04, .04);
+    const demandGrowth = (
+      s.consumption*consumptionGrowth
+      + s.investment*investmentGrowth
+      + s.governmentSpending*governmentGrowth
+      + s.exports*exportGrowthSignal
+      - s.imports*importGrowthSignal
+    ) / Math.max(1,s.realGDP);
     // Demand support has a larger real-output payoff when resources are idle, but a
     // smaller payoff when an energy bottleneck prevents firms from expanding production.
     // The same bottleneck instead makes demand pressure more likely to show up in prices below.
