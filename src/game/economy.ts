@@ -198,7 +198,9 @@ export class EconomyEngine {
     const potentialQ = .0045 + (s.productivity-1)*.0015 + Math.max(0,s.technology-70)*.000025 + .00075*Math.max(0,s.structuralCapital-.20);
     s.potentialGDP *= (1 + potentialQ);
 
-    s.creditGrowth = updateCreditGrowth(s.policyRate, s.inflationExpected, s.bankHealth, s.sovereignSpread, tx.credit, noise()*.004);
+    // Defaults from the previous quarter tighten lending with a lag, avoiding an instantaneous loop.
+    const recentDefaults = Math.min(8, Math.max(0, s.bankruptcies ?? 0));
+    s.creditGrowth = updateCreditGrowth(s.policyRate, s.inflationExpected, s.bankHealth, s.sovereignSpread, tx.credit - 0.0015*recentDefaults, noise()*.004);
     s.businessConfidence = clamp(s.businessConfidence + .10*(s.growth-.02) - .08*Math.max(0,s.inflation-.05) + (imp.confidence??0) + noise()*.008, .15,.95);
     s.consumerConfidence = clamp(.65*s.consumerConfidence + .35*(.72 - 1.8*Math.max(0,s.inflation-.025) - 1.2*Math.max(0,s.unemployment-.05) + .3*s.approval), .12,.95);
 
@@ -272,7 +274,10 @@ export class EconomyEngine {
     s.wageGrowth=updateWageGrowth(s.wageGrowth, s.inflationExpected, s.productivity, s.unemployment, noise()*.0015);
     s.realWageGrowth=clamp(s.wageGrowth-s.inflation,-.15,.15);
 
-    s.bankHealth = clamp(s.bankHealth + .030*qGrowth - .12*Math.max(0,s.unemployment-.08) - .055*Math.max(0,s.policyRate-.10) + (imp.bank??0) + noise()*.006, .08,1);
+    // Firm defaults impair bank balance sheets; weak credit growth adds a slower credit-cycle drag.
+    const defaultLoss = .004*Math.min(8, Math.max(0, s.bankruptcies ?? 0));
+    const creditCycleDrag = .018*Math.max(0, .02-s.creditGrowth);
+    s.bankHealth = clamp(s.bankHealth + .030*qGrowth - .12*Math.max(0,s.unemployment-.08) - .055*Math.max(0,s.policyRate-.10) - defaultLoss - creditCycleDrag + (imp.bank??0) + noise()*.006, .08,1);
     s.exchangeRate = clamp(s.exchangeRate * (1 + .055*(s.inflation-.025) - .035*(s.policyRate-.04) + .025*(.65-s.bankHealth) + (imp.fx??0) + noise()*.004), .45,2.7);
 
     // Fiscal impulses affect the primary balance as well as demand; otherwise stimulus/austerity
