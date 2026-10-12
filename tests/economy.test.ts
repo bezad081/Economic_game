@@ -534,3 +534,28 @@ describe('expenditure-side macro demand accounting', () => {
     expect(engine.state.realGDP).toBeGreaterThan(0);
   });
 });
+
+
+describe('nominal-growth debt dynamics', () => {
+  it('recognizes that inflation raises nominal GDP and can lower the debt ratio, all else equal', async () => {
+    const { updateDebtRatio } = await import('../src/game/parameters');
+    const lowInflation = updateDebtRatio(0.80, 0.05, 0.015, 0.005, 0.01, -0.01);
+    const higherInflation = updateDebtRatio(0.80, 0.05, 0.015, 0.005, 0.06, -0.01);
+    expect(higherInflation).toBeLessThan(lowInflation);
+  });
+
+  it('makes higher funding costs worsen debt dynamics, all else equal', async () => {
+    const { updateDebtRatio } = await import('../src/game/parameters');
+    const lowerCost = updateDebtRatio(0.90, 0.03, 0.005, 0.004, 0.025, 0.005);
+    const higherCost = updateDebtRatio(0.90, 0.08, 0.035, 0.004, 0.025, 0.005);
+    expect(higherCost).toBeGreaterThan(lowerCost);
+  });
+
+  it('keeps debt ratio finite and bounded under recession and high inflation', async () => {
+    const { updateDebtRatio } = await import('../src/game/parameters');
+    const ratio = updateDebtRatio(1.5, 0.12, 0.08, -0.04, 0.25, -0.10, 0.02);
+    expect(Number.isFinite(ratio)).toBe(true);
+    expect(ratio).toBeGreaterThanOrEqual(0.08);
+    expect(ratio).toBeLessThanOrEqual(2.4);
+  });
+});
