@@ -662,3 +662,39 @@ describe('expectations, wage setting and sovereign-risk feedback', () => {
     ]) expect(Number.isFinite(value)).toBe(true);
   });
 });
+
+
+describe('fiscal revenue and treasury accounting', () => {
+  it('improves the primary balance when revenue rises, all else equal', () => {
+    const base = new EconomyEngine('sandbox').snapshot();
+    const revenueState = structuredClone(base);
+    const spendingState = structuredClone(base);
+    revenueState.impulses.push({
+      id: 'test-tax-revenue', label: 'Tax revenue', age: 0, duration: 4,
+      effects: { fiscalRevenue: 0.05 }
+    });
+    spendingState.impulses.push({
+      id: 'test-revenue-shortfall', label: 'Revenue shortfall', age: 0, duration: 4,
+      effects: { fiscalRevenue: -0.05 }
+    });
+
+    const revenueEngine = new EconomyEngine('sandbox', revenueState);
+    const spendingEngine = new EconomyEngine('sandbox', spendingState);
+    revenueEngine.stepQuarter();
+    spendingEngine.stepQuarter();
+
+    expect(revenueEngine.state.primaryBalance).toBeGreaterThan(spendingEngine.state.primaryBalance);
+    expect(revenueEngine.state.treasury).toBeGreaterThan(spendingEngine.state.treasury);
+  });
+
+  it('makes a primary deficit reduce treasury cash rather than create cash', () => {
+    const engine = new EconomyEngine('sandbox');
+    const initialTreasury = engine.state.treasury;
+    engine.state.primaryBalance = -0.08;
+    engine.state.growth = 0.02;
+    engine.state.debtRatio = 0.60;
+    engine.stepQuarter();
+    expect(engine.state.treasury).toBeLessThan(initialTreasury + 1);
+    expect(Number.isFinite(engine.state.treasury)).toBe(true);
+  });
+});
