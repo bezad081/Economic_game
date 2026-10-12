@@ -32,7 +32,7 @@ export function seedHouseholds():HouseholdCohort[]{
   ];
 }
 
-export function updateMicroeconomy(s:EconomySnapshot, rand:()=>number){
+export function updateMicroeconomy(s:EconomySnapshot, rand:()=>number, effects:Effects = {}){
   if(!s.firms?.length) s.firms=seedFirms();
   if(!s.households?.length) s.households=seedHouseholds();
   let bankruptcies=0,births=0,totalEmployment=0,wageBill=0,firmSales=0,firmInvestment=0;
