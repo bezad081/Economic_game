@@ -90,3 +90,31 @@ export function updateUnemployment(
     unemployment - 0.24 * cyclicalGrowthGap + 0.04 * (0.052 - unemployment) + shock
   ));
 }
+
+
+/**
+ * Credit growth responds to nominal and expected-real financing costs,
+ * sovereign-risk spillovers, and bank lending capacity.
+ * Rates/spreads are annualized decimal rates; coefficients are stylized.
+ */
+export function updateCreditGrowth(
+  policyRate: number,
+  expectedInflation: number,
+  bankHealth: number,
+  sovereignSpread: number,
+  creditImpulse = 0,
+  noise = 0,
+): number {
+  const realRate = policyRate - expectedInflation;
+  const bankCapacity = Math.max(0, Math.min(1, bankHealth));
+  const riskPremium = Math.max(0, sovereignSpread - 0.015);
+  return Math.max(-0.12, Math.min(0.20,
+    0.032
+    - 0.42 * (policyRate - 0.04)
+    - 0.16 * (realRate - 0.012)
+    + 0.075 * (bankCapacity - 0.7)
+    - 0.18 * riskPremium
+    + creditImpulse
+    + noise
+  ));
+}
