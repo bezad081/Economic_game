@@ -2,7 +2,7 @@ import { POLICIES, policyById } from './policies';
 import type { ActiveImpulse, AdvisorRecommendation, EconomySnapshot, Effects, GameMode, HistoryPoint, MacroEvent, Mission, NewsItem, PolicySpec } from './types';
 import { cabinetAdvice, seedFirms, seedHouseholds, updateElection, updateMicroeconomy } from './micro';
 import { policyLag, transmitDemand } from './transmission';
-import { updateDebtRatio, updateUnemployment } from './parameters';
+import { updateCreditGrowth, updateDebtRatio, updateUnemployment } from './parameters';
 import { assessPolicy } from './learning';
 
 const clamp = (x:number, lo:number, hi:number) => Math.max(lo, Math.min(hi, x));
@@ -199,7 +199,7 @@ export class EconomyEngine {
     const potentialQ = .0045 + (s.productivity-1)*.0015 + Math.max(0,s.technology-70)*.000025 + .00075*Math.max(0,s.structuralCapital-.20);
     s.potentialGDP *= (1 + potentialQ);
 
-    s.creditGrowth = clamp(.032 - .52*(s.policyRate-.04) + .075*(s.bankHealth-.7) + tx.credit + noise()*.004, -.12,.20);
+    s.creditGrowth = updateCreditGrowth(s.policyRate, s.inflationExpected, s.bankHealth, s.sovereignSpread, tx.credit, noise()*.004);
     s.businessConfidence = clamp(s.businessConfidence + .10*(s.growth-.02) - .08*Math.max(0,s.inflation-.05) + (imp.confidence??0) + noise()*.008, .15,.95);
     s.consumerConfidence = clamp(.65*s.consumerConfidence + .35*(.72 - 1.8*Math.max(0,s.inflation-.025) - 1.2*Math.max(0,s.unemployment-.05) + .3*s.approval), .12,.95);
 
