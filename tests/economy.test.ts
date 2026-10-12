@@ -499,3 +499,38 @@ describe('long-horizon simulation stability', () => {
     expect(engine.state.history.length).toBeGreaterThan(20);
   });
 });
+
+
+describe('expenditure-side macro demand accounting', () => {
+  it('makes export exposure and import leakage affect output growth in the expected direction', () => {
+    const base = new EconomyEngine('sandbox').state;
+    const exportLedState = structuredClone(base);
+    exportLedState.exports = 160;
+    exportLedState.imports = 80;
+    const importLedState = structuredClone(base);
+    importLedState.exports = 80;
+    importLedState.imports = 160;
+
+    const exportLed = new EconomyEngine('sandbox', exportLedState);
+    const importLed = new EconomyEngine('sandbox', importLedState);
+    exportLed.stepQuarter();
+    importLed.stepQuarter();
+
+    expect(exportLed.state.growth).toBeGreaterThan(importLed.state.growth);
+    expect(Number.isFinite(exportLed.state.realGDP)).toBe(true);
+    expect(Number.isFinite(importLed.state.realGDP)).toBe(true);
+  });
+
+  it('keeps growth finite when net exports are negative', () => {
+    const state = new EconomyEngine('sandbox').state;
+    state.exports = 70;
+    state.imports = 145;
+    state.netExports = -75;
+    const engine = new EconomyEngine('sandbox', state);
+
+    for (let quarter = 0; quarter < 12; quarter += 1) engine.stepQuarter();
+    expect(Number.isFinite(engine.state.growth)).toBe(true);
+    expect(Number.isFinite(engine.state.realGDP)).toBe(true);
+    expect(engine.state.realGDP).toBeGreaterThan(0);
+  });
+});
