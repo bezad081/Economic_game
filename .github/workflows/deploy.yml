@@ -1,5 +1,9 @@
 name: Deploy MACROSTATE React
 
+concurrency:
+  group: macrostate-github-pages
+  cancel-in-progress: true
+
 on:
   push:
     branches: ["main"]
@@ -45,3 +49,14 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify published site responds with built assets
+        run: |
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error --location https://bezad081.github.io/Economic_game/ -o /tmp/macrostate-index.html; then
+              break
+            fi
+            sleep 5
+          done
+          test -s /tmp/macrostate-index.html
+          grep -q 'assets/.*\.js' /tmp/macrostate-index.html
