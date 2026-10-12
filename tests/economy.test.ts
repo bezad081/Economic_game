@@ -698,3 +698,29 @@ describe('fiscal revenue and treasury accounting', () => {
     expect(Number.isFinite(engine.state.treasury)).toBe(true);
   });
 });
+
+
+describe('banking feedback from firm defaults', () => {
+  it('lets widespread firm defaults weaken banks and subsequently tighten credit', () => {
+    const baseline = new EconomyEngine('sandbox');
+    const distressedState = baseline.snapshot();
+    for (const firm of distressedState.firms) {
+      firm.health = 0.04;
+      firm.cash = 0;
+      firm.leverage = 1.2;
+      firm.investment = 12;
+    }
+    const stressed = new EconomyEngine('sandbox', distressedState);
+    const baselineBankHealth = baseline.state.bankHealth;
+    baseline.stepQuarter();
+    stressed.stepQuarter();
+
+    expect(stressed.state.bankruptcies).toBeGreaterThan(0);
+    expect(stressed.state.bankHealth).toBeLessThan(baselineBankHealth);
+
+    const baselineCredit = baseline.state.creditGrowth;
+    baseline.stepQuarter();
+    stressed.stepQuarter();
+    expect(stressed.state.creditGrowth).toBeLessThan(baselineCredit);
+  });
+});
