@@ -56,7 +56,10 @@ export function updateMicroeconomy(s:EconomySnapshot, rand:()=>number, effects:E
     f.productivity=clamp(f.productivity*(1+productivityGrowth),.6,2.2);
     const revenue=Math.max(.2,(f.employees/28)*f.productivity*(1+demand+rand()*.025));
     const wageCost=(f.employees/34)*f.wage*(1+s.inflation*.22);
-    const debtCost=f.leverage*(.7+5*Math.max(0,s.policyRate));
+    // Sovereign risk and scarce credit raise effective financing costs for leveraged firms.
+    const debtCost=f.leverage*(.7+5*Math.max(0,s.policyRate)
+      + 2.2*Math.max(0,s.sovereignSpread-.015)
+      + .35*Math.max(0,.03-s.creditGrowth));
     f.profit=revenue-wageCost-debtCost;
     f.cash=clamp(f.cash+f.profit*.42-f.investment*.25,0,90);
     f.health=clamp(f.health+.018*f.profit-.10*Math.max(0,s.unemployment-.08)-financingDrag+(rand()-.5)*.025,.03,1);
