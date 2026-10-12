@@ -45,3 +45,39 @@ describe('distributional policy transmission', () => {
     expect(state.poverty).toBeLessThanOrEqual(0.46);
   });
 });
+
+
+describe('firm aggregate indicators and labor transmission', () => {
+  it('keeps firm sales and investment on their documented macro index scales', () => {
+    const state = new EconomyEngine('sandbox').snapshot();
+    updateMicroeconomy(state, () => 0.5);
+    expect(state.firmSales).toBeGreaterThan(70);
+    expect(state.firmSales).toBeLessThan(120);
+    expect(state.firmInvestment).toBeGreaterThan(3);
+    expect(state.firmInvestment).toBeLessThan(6);
+  });
+
+  it('translates stronger demand into higher firm employment under the same random sequence', () => {
+    const base = new EconomyEngine('sandbox').snapshot();
+    const strongerDemand = structuredClone(base);
+    const weakerDemand = structuredClone(base);
+    strongerDemand.growth = 0.08;
+    strongerDemand.businessConfidence = 0.78;
+    weakerDemand.growth = -0.04;
+    weakerDemand.businessConfidence = 0.45;
+    updateMicroeconomy(strongerDemand, () => 0.5);
+    updateMicroeconomy(weakerDemand, () => 0.5);
+    expect(strongerDemand.totalEmployment).toBeGreaterThan(weakerDemand.totalEmployment);
+  });
+
+  it('routes stronger credit availability into the aggregate firm-investment indicator', () => {
+    const base = new EconomyEngine('sandbox').snapshot();
+    const supported = structuredClone(base);
+    const constrained = structuredClone(base);
+    supported.creditGrowth = 0.12;
+    constrained.creditGrowth = -0.08;
+    updateMicroeconomy(supported, () => 0.5);
+    updateMicroeconomy(constrained, () => 0.5);
+    expect(supported.firmInvestment).toBeGreaterThan(constrained.firmInvestment);
+  });
+});
