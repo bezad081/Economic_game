@@ -460,3 +460,42 @@ describe('crisis response effectiveness', () => {
     expect(engine.state.impulses.some(i => i.id === unrelated?.id)).toBe(true);
   });
 });
+
+
+describe('long-horizon simulation stability', () => {
+  it('keeps core macro indicators finite and bounded through repeated shocks and event chains', () => {
+    const engine = new EconomyEngine('mission');
+    const shocks = ['oil', 'financial', 'sanctions', 'food'] as const;
+
+    for (let quarter = 0; quarter < 32; quarter += 1) {
+      if (quarter % 6 === 0) engine.triggerShock(shocks[(quarter / 6) % shocks.length]);
+      engine.stepQuarter();
+
+      const s = engine.state;
+      for (const key of [
+        'realGDP', 'potentialGDP', 'growth', 'inflation', 'coreInflation',
+        'unemployment', 'debtRatio', 'primaryBalance', 'bankHealth',
+        'creditGrowth', 'exchangeRate', 'energySecurity', 'structuralCapital',
+        'poverty', 'inequality', 'productivity', 'sovereignSpread'
+      ] as const) {
+        expect(Number.isFinite(s[key]), `quarter ${quarter + 1}: ${key}`).toBe(true);
+      }
+      expect(s.realGDP).toBeGreaterThan(0);
+      expect(s.potentialGDP).toBeGreaterThan(0);
+      expect(s.unemployment).toBeGreaterThanOrEqual(0);
+      expect(s.unemployment).toBeLessThanOrEqual(1);
+      expect(s.bankHealth).toBeGreaterThanOrEqual(0);
+      expect(s.bankHealth).toBeLessThanOrEqual(1);
+      expect(s.energySecurity).toBeGreaterThanOrEqual(0);
+      expect(s.energySecurity).toBeLessThanOrEqual(1);
+      expect(s.poverty).toBeGreaterThanOrEqual(0);
+      expect(s.poverty).toBeLessThanOrEqual(1);
+      expect(s.inequality).toBeGreaterThanOrEqual(0);
+      expect(s.inequality).toBeLessThanOrEqual(1);
+      expect(s.activeEvents.length).toBeLessThanOrEqual(3);
+    }
+
+    expect(engine.state.turn).toBe(32);
+    expect(engine.state.history.length).toBeGreaterThan(20);
+  });
+});
