@@ -107,7 +107,7 @@ export function updateMicroeconomy(s:EconomySnapshot, rand:()=>number, effects:E
   s.firmSales=firmSales;
   s.firmInvestment=firmInvestment;
   s.capacityUtilization=capacityUtilization;
-  s.poverty=clamp(.65*s.poverty+.35*(.04+.62*low.unemployment+.10*inflationPain+.08*housingPain),.025,.46);
+  s.poverty=clamp(.65*s.poverty+.35*(.04+.62*low.unemployment+.10*inflationPain+.08*housingPain-.08*Math.max(0,targetedTransfer)),.025,.46);
   s.inequality=clamp(.72*s.inequality+.28*(.28+.12*Math.log(Math.max(1,s.households[2].wealth/middle.wealth))+.06*housingPain),.22,.65);
   s.consumerConfidence=clamp(.45*s.consumerConfidence+.55*s.households.reduce((a,h)=>a+h.sentiment*h.populationShare,0),.1,.95);
   s.businessConfidence=clamp(.52*s.businessConfidence+.48*(s.firms.reduce((a,f)=>a+f.health,0)/Math.max(1,s.firms.length)),.1,.95);
