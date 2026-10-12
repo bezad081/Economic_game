@@ -71,3 +71,22 @@ export function updateDebtRatio(
     + debtImpulse
   ));
 }
+
+
+/**
+ * Okun-style quarterly unemployment update.
+ * Unemployment falls when real growth exceeds potential growth and rises when
+ * growth underperforms potential. Mean reversion and shocks remain explicit.
+ * This is a stylized teaching parameter, not an estimated Okun coefficient.
+ */
+export function updateUnemployment(
+  unemployment: number,
+  quarterlyRealGrowth: number,
+  quarterlyPotentialGrowth: number,
+  shock = 0,
+): number {
+  const cyclicalGrowthGap = quarterlyRealGrowth - quarterlyPotentialGrowth;
+  return Math.max(0.018, Math.min(0.28,
+    unemployment - 0.24 * cyclicalGrowthGap + 0.08 * (0.052 - unemployment) + shock
+  ));
+}
