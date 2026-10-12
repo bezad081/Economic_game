@@ -92,7 +92,7 @@ export function updateMicroeconomy(s:EconomySnapshot, rand:()=>number, effects:E
     h.income=clamp(h.income*(1+wageGrowth/4+transferGrowth),.45,12);
     const wealthReturn=h.id==='upper'?(.012+s.growth*.08-s.policyRate*.02):(.004+s.growth*.03);
     h.wealth=clamp(h.wealth*(1+wealthReturn)+Math.max(0,h.income*(1-h.consumption))*.18,2,700);
-    h.consumption=clamp(h.consumption+.025*inflationPain*sensitivity+.015*housingPain*sensitivity-.012*Math.max(0,s.growth-.03),.42,.96);
+    h.consumption=clamp(h.consumption+.025*inflationPain*sensitivity+.015*housingPain*sensitivity-.012*Math.max(0,s.growth-.03)+Math.max(0,targetedTransfer)*.12*sensitivity,.42,.96);
     h.sentiment=clamp(.76*h.sentiment+.24*(.76-2.2*inflationPain*sensitivity-1.6*h.unemployment-.65*housingPain+s.approval*.35),.08,.94);
   }
 
