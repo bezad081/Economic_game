@@ -583,3 +583,27 @@ describe('Okun-style labor-market dynamics', () => {
     expect(updateUnemployment(0.02, 0.08, 0, -0.10)).toBeGreaterThanOrEqual(0.018);
   });
 });
+
+
+describe('real-rate and sovereign-risk credit channel', () => {
+  it('reduces credit growth as real policy rates rise, all else equal', async () => {
+    const { updateCreditGrowth } = await import('../src/game/parameters');
+    const easier = updateCreditGrowth(0.03, 0.025, 0.8, 0.01);
+    const tighter = updateCreditGrowth(0.09, 0.025, 0.8, 0.01);
+    expect(tighter).toBeLessThan(easier);
+  });
+
+  it('makes sovereign-risk premiums weigh on credit supply', async () => {
+    const { updateCreditGrowth } = await import('../src/game/parameters');
+    const calmMarkets = updateCreditGrowth(0.05, 0.03, 0.75, 0.01);
+    const stressedMarkets = updateCreditGrowth(0.05, 0.03, 0.75, 0.07);
+    expect(stressedMarkets).toBeLessThan(calmMarkets);
+  });
+
+  it('preserves stronger lending capacity in healthier banks under equal financing costs', async () => {
+    const { updateCreditGrowth } = await import('../src/game/parameters');
+    const healthy = updateCreditGrowth(0.06, 0.03, 0.9, 0.02);
+    const fragile = updateCreditGrowth(0.06, 0.03, 0.25, 0.02);
+    expect(healthy).toBeGreaterThan(fragile);
+  });
+});
