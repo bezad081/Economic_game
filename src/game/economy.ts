@@ -203,7 +203,7 @@ export class EconomyEngine {
     s.consumerConfidence = clamp(.65*s.consumerConfidence + .35*(.72 - 1.8*Math.max(0,s.inflation-.025) - 1.2*Math.max(0,s.unemployment-.05) + .3*s.approval), .12,.95);
 
     // Micro layer: firms and households form the bridge between policy and aggregate demand.
-    updateMicroeconomy(s,()=>this.rng.next());
+    updateMicroeconomy(s,()=>this.rng.next(),imp);
     const outputGap=(s.realGDP/s.potentialGDP)-1;
     s.outputGap=outputGap;
     // National-account demand channels: policy affects components first; GDP responds to their combined movement.
