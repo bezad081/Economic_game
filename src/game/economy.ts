@@ -121,7 +121,17 @@ export class EconomyEngine {
       this.pushNews(`Long-run reform stock increased: productive-capacity index is now ${(this.state.structuralCapital*100).toFixed(1)}. Benefits arrive gradually, not instantly.`, 'good');
     }
     const matched=this.state.activeEvents.find(e=>e.status==='active'&&e.responsePolicyIds.includes(id));
-    if(matched){matched.status='responded';matched.resolvedBy=policy.label;this.state.politicalCapital=clamp(this.state.politicalCapital+3,0,100);this.pushNews(`Policy response matched the ${matched.title} event.`, 'good');}
+    if(matched){
+      matched.status='responded';
+      matched.resolvedBy=policy.label;
+      // A successful response stops the unresolved event's recurring impulse; past damage remains in the state.
+      const eventImpulseId=`event-${matched.id}`;
+      const beforeCount=this.state.impulses.length;
+      this.state.impulses=this.state.impulses.filter(impulse=>impulse.id!==eventImpulseId);
+      const stopped=beforeCount-this.state.impulses.length;
+      this.state.politicalCapital=clamp(this.state.politicalCapital+3,0,100);
+      this.pushNews(`Policy response matched the ${matched.title} event.${stopped?' Ongoing spillover pressure has been stopped.':''}`, 'good');
+    }
     const pendingEvaluation = { id:policy.id, label:policy.label, tab:policy.tab, enactedTurn:this.state.turn, before:{growth:this.state.growth,inflation:this.state.inflation,unemployment:this.state.unemployment,debt:this.state.debtRatio,creditGrowth:this.state.creditGrowth,investment:this.state.investment,consumption:this.state.consumption} };
     this.state.pendingPolicies ??= this.state.pendingPolicy ? [this.state.pendingPolicy] : [];
     this.state.pendingPolicies.push(pendingEvaluation);
